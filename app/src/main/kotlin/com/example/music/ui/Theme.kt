@@ -138,5 +138,9 @@ fun coverColors(seed: String): Pair<Color, Color> {
         Color.hsl(((hue + 28) % 360).toFloat(), 0.40f, 0.66f)
 }
 
+/** A record is black whatever the page behind it is. */
+val VinylBody = Color(0xFF17131A)
+val VinylGroove = Color(0x1FFFFFFF)
+
 /** Ink for text drawn on top of a generated cover tile. */
 val OnCover = Color(0xFF3A2A30)

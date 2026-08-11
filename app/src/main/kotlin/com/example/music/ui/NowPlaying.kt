@@ -7,6 +7,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -334,14 +337,11 @@ private fun ArtworkPager(state: PlayerUiState, modifier: Modifier, onQueueSelect
             pageSpacing = 16.dp,
             contentPadding = PaddingValues(horizontal = 26.dp),
         ) { page ->
-            val item = state.queue[page]
-            Artwork(
-                item.artUri, item.title,
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .shadow(24.dp, RoundedCornerShape(18.dp), clip = false),
-                corner = 18,
+            SpinningCover(
+                song = state.queue[page],
+                // Only the page you are actually on turns; neighbours sit still.
+                spinning = state.isPlaying && page == pager.currentPage,
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
             )
         }
     }
@@ -415,6 +415,98 @@ private fun SpeedPill(speed: Float, onSpeedChange: (Float) -> Unit) {
             }
             .padding(horizontal = 12.dp, vertical = 6.dp),
     )
+}
+
+/**
+ * A record, turning while the music plays.
+ *
+ * The point of the detail is legibility of motion. A smooth disc looks identical at every angle,
+ * so spinning it changes nothing you can see; grooves, a label edge and an off-centre highlight
+ * give the eye features to track. The sheen deliberately does NOT rotate — the grooves passing
+ * underneath a fixed glint is what sells it as turning rather than just being round.
+ *
+ * The angle is read inside graphicsLayer rather than passed to rotate(), so advancing it each
+ * frame invalidates only the draw phase instead of recomposing the artwork sixty times a second.
+ */
+@Composable
+private fun SpinningCover(song: Song, spinning: Boolean, modifier: Modifier = Modifier) {
+    val angle = remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(spinning) {
+        var last = 0L
+        while (spinning) {
+            withFrameNanos { now ->
+                // Real elapsed time, so speed does not depend on frame rate and pausing leaves
+                // the record exactly where it stopped. ~12s a turn: visible, not frantic.
+                if (last != 0L) {
+                    angle.floatValue = (angle.floatValue + (now - last) / 1_000_000_000f * 30f) % 360f
+                }
+                last = now
+            }
+        }
+    }
+
+    Box(modifier, contentAlignment = Alignment.Center) {
+        // Everything that turns, in one layer.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { rotationZ = angle.floatValue },
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                val r = size.minDimension / 2f
+                drawCircle(VinylBody, radius = r)
+
+                // Grooves. Spacing widens slightly outward, as on a real pressing.
+                var groove = r * 0.99f
+                var step = r * 0.012f
+                while (groove > r * 0.46f) {
+                    drawCircle(
+                        color = VinylGroove,
+                        radius = groove,
+                        style = Stroke(width = size.minDimension * 0.0016f),
+                    )
+                    groove -= step
+                    step *= 1.012f
+                }
+
+                // One faint seam from label to rim. Without a feature at a known angle the
+                // grooves alone can still read as a static texture.
+                drawLine(
+                    color = VinylGroove,
+                    start = Offset(center.x, center.y - r * 0.47f),
+                    end = Offset(center.x, center.y - r * 0.99f),
+                    strokeWidth = size.minDimension * 0.004f,
+                )
+            }
+
+            // The label: artwork, sized and placed like a real one.
+            Artwork(
+                song.artUri, song.title,
+                Modifier.fillMaxSize(0.46f).shadow(0.dp, CircleShape, clip = false),
+                corner = 500,
+            )
+            Canvas(Modifier.fillMaxSize(0.46f)) {
+                drawCircle(VinylGroove, radius = size.minDimension / 2f, style = Stroke(width = 3f))
+            }
+            // Spindle hole.
+            Box(Modifier.fillMaxSize(0.055f).clip(CircleShape).background(Ink))
+        }
+
+        // Fixed glint. Stays put while the grooves turn under it.
+        Canvas(Modifier.fillMaxSize()) {
+            drawCircle(
+                brush = Brush.linearGradient(
+                    0f to Color.White.copy(alpha = 0.16f),
+                    0.45f to Color.Transparent,
+                    0.78f to Color.Transparent,
+                    1f to Color.White.copy(alpha = 0.07f),
+                ),
+                radius = size.minDimension / 2f,
+            )
+        }
+    }
 }
 
 @Composable
