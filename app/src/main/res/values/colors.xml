@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Cream ground and dusty rose, matching the in-app palette. -->
-    <color name="ic_launcher_background">#0C0C0C</color>
+    <color name="ic_launcher_background">#FDF0F1</color>
     <color name="accent">#C4506F</color>
     <color name="page">#FDF7F4</color>
-    <color name="splash">#0C0C0C</color>
+    <color name="splash">#FDF0F1</color>
 </resources>

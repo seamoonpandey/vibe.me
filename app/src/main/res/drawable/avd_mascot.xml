@@ -4,20 +4,52 @@
     <target android:name="mascot">
         <aapt:attr name="android:animation" xmlns:aapt="http://schemas.android.com/aapt">
             <set android:ordering="together">
-                <objectAnimator
-                    android:propertyName="scaleX" android:valueFrom="0.70" android:valueTo="1.0"
+                <objectAnimator android:propertyName="scaleX"
+                    android:valueFrom="0.70" android:valueTo="1.0"
                     android:duration="600" android:interpolator="@android:interpolator/overshoot" />
-                <objectAnimator
-                    android:propertyName="scaleY" android:valueFrom="0.70" android:valueTo="1.0"
+                <objectAnimator android:propertyName="scaleY"
+                    android:valueFrom="0.70" android:valueTo="1.0"
                     android:duration="600" android:interpolator="@android:interpolator/overshoot" />
                 <!-- Head tilt, the way a dog does when it hears something. -->
-                <objectAnimator
-                    android:propertyName="rotation" android:valueFrom="-16" android:valueTo="9"
+                <objectAnimator android:propertyName="rotation"
+                    android:valueFrom="-16" android:valueTo="9"
                     android:duration="520" android:interpolator="@android:interpolator/decelerate_quad" />
-                <objectAnimator
-                    android:propertyName="rotation" android:valueFrom="9" android:valueTo="0"
-                    android:startOffset="520" android:duration="320"
-                    android:interpolator="@android:interpolator/decelerate_quad" />
+                <objectAnimator android:propertyName="rotation"
+                    android:valueFrom="9" android:valueTo="0" android:startOffset="520"
+                    android:duration="320" android:interpolator="@android:interpolator/decelerate_quad" />
+            </set>
+        </aapt:attr>
+    </target>
+
+    <!-- Hearts rise and fade, offset from each other so they do not move as one block. -->
+    <target android:name="heartL">
+        <aapt:attr name="android:animation" xmlns:aapt="http://schemas.android.com/aapt">
+            <set android:ordering="together">
+                <objectAnimator android:propertyName="translateY"
+                    android:valueFrom="14" android:valueTo="-10" android:startOffset="120"
+                    android:duration="760" android:interpolator="@android:interpolator/decelerate_quad" />
+                <objectAnimator android:propertyName="scaleX"
+                    android:valueFrom="0.2" android:valueTo="1.0" android:startOffset="120"
+                    android:duration="420" android:interpolator="@android:interpolator/overshoot" />
+                <objectAnimator android:propertyName="scaleY"
+                    android:valueFrom="0.2" android:valueTo="1.0" android:startOffset="120"
+                    android:duration="420" android:interpolator="@android:interpolator/overshoot" />
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="heartR">
+        <aapt:attr name="android:animation" xmlns:aapt="http://schemas.android.com/aapt">
+            <set android:ordering="together">
+                <objectAnimator android:propertyName="translateY"
+                    android:valueFrom="16" android:valueTo="-12" android:startOffset="300"
+                    android:duration="760" android:interpolator="@android:interpolator/decelerate_quad" />
+                <objectAnimator android:propertyName="scaleX"
+                    android:valueFrom="0.2" android:valueTo="1.0" android:startOffset="300"
+                    android:duration="420" android:interpolator="@android:interpolator/overshoot" />
+                <objectAnimator android:propertyName="scaleY"
+                    android:valueFrom="0.2" android:valueTo="1.0" android:startOffset="300"
+                    android:duration="420" android:interpolator="@android:interpolator/overshoot" />
             </set>
         </aapt:attr>
     </target>

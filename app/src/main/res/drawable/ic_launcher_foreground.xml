@@ -2,45 +2,61 @@
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
 
-    <!-- A puppy in headphones. One group, so the animation can move the whole face at once. -->
+    <!-- Hearts drift up behind the puppy. Separate groups so each can rise on its own. -->
+    <group android:name="heartL" android:pivotX="24" android:pivotY="34">
+        <group android:translateX="16" android:translateY="24" android:scaleX="0.85" android:scaleY="0.85">
+            <path android:fillColor="#E0748F"
+                android:pathData="M0,4 C0,1 3,-0.4 5,2 C7,-0.4 10,1 10,4 C10,7.4 5,11.4 5,11.4 C5,11.4 0,7.4 0,4 Z" />
+        </group>
+    </group>
+
+    <group android:name="heartR" android:pivotX="86" android:pivotY="30">
+        <group android:translateX="78" android:translateY="18" android:scaleX="1.15" android:scaleY="1.15">
+            <path android:fillColor="#C4506F"
+                android:pathData="M0,4 C0,1 3,-0.4 5,2 C7,-0.4 10,1 10,4 C10,7.4 5,11.4 5,11.4 C5,11.4 0,7.4 0,4 Z" />
+        </group>
+    </group>
+
     <group android:name="mascot" android:pivotX="54" android:pivotY="58">
 
         <!-- Floppy ears sit behind the head. -->
-        <path android:fillColor="#C98A5B"
+        <path android:fillColor="#D9A08C"
             android:pathData="M29,44 m-10,0 a10,18 0 1,0 20,0 a10,18 0 1,0 -20,0 Z" />
-        <path android:fillColor="#C98A5B"
+        <path android:fillColor="#D9A08C"
             android:pathData="M79,44 m-10,0 a10,18 0 1,0 20,0 a10,18 0 1,0 -20,0 Z" />
 
         <!-- Head. -->
-        <path android:fillColor="#F0D6B8"
+        <path android:fillColor="#F7E2D3"
             android:pathData="M54,56 m-27,0 a27,25 0 1,0 54,0 a27,25 0 1,0 -54,0 Z" />
 
         <!-- Muzzle. -->
-        <path android:fillColor="#FBEEDF"
+        <path android:fillColor="#FDF2E9"
             android:pathData="M54,68 m-14,0 a14,11 0 1,0 28,0 a14,11 0 1,0 -28,0 Z" />
 
-        <!-- Nose and mouth. -->
-        <path android:fillColor="#3B2A22"
-            android:pathData="M54,62 m-5,0 a5,4 0 1,0 10,0 a5,4 0 1,0 -10,0 Z" />
-        <path android:strokeColor="#3B2A22" android:strokeWidth="2" android:strokeLineCap="round"
-            android:pathData="M54,66 L54,71 M54,71 q-5,4 -9,0 M54,71 q5,4 9,0" />
+        <!-- A heart for a nose, since this one is a gift. -->
+        <group android:translateX="49" android:translateY="57" android:scaleX="1.0" android:scaleY="1.0">
+            <path android:fillColor="#C4506F"
+                android:pathData="M0,4 C0,1 3,-0.4 5,2 C7,-0.4 10,1 10,4 C10,7.4 5,11.4 5,11.4 C5,11.4 0,7.4 0,4 Z" />
+        </group>
+        <path android:strokeColor="#7A4A52" android:strokeWidth="2" android:strokeLineCap="round"
+            android:pathData="M54,68 L54,72 M54,72 q-5,4 -9,0 M54,72 q5,4 9,0" />
 
         <!-- Eyes, with a catchlight each so it reads as friendly rather than blank. -->
-        <path android:fillColor="#3B2A22"
+        <path android:fillColor="#4A2F35"
             android:pathData="M43,52 m-4,0 a4,4.5 0 1,0 8,0 a4,4.5 0 1,0 -8,0 Z" />
-        <path android:fillColor="#3B2A22"
+        <path android:fillColor="#4A2F35"
             android:pathData="M65,52 m-4,0 a4,4.5 0 1,0 8,0 a4,4.5 0 1,0 -8,0 Z" />
         <path android:fillColor="#FFFFFF"
             android:pathData="M44.6,50.2 m-1.4,0 a1.4,1.4 0 1,0 2.8,0 a1.4,1.4 0 1,0 -2.8,0 Z" />
         <path android:fillColor="#FFFFFF"
             android:pathData="M66.6,50.2 m-1.4,0 a1.4,1.4 0 1,0 2.8,0 a1.4,1.4 0 1,0 -2.8,0 Z" />
 
-        <!-- Headphones over the top. -->
-        <path android:strokeColor="#1DB954" android:strokeWidth="5.5" android:strokeLineCap="round"
+        <!-- Headphones, in the app's rose. -->
+        <path android:strokeColor="#C4506F" android:strokeWidth="5.5" android:strokeLineCap="round"
             android:pathData="M22,52 A32,32 0 0,1 86,52" />
-        <path android:fillColor="#1DB954"
+        <path android:fillColor="#C4506F"
             android:pathData="M20,56 m-7.5,0 a7.5,10 0 1,0 15,0 a7.5,10 0 1,0 -15,0 Z" />
-        <path android:fillColor="#1DB954"
+        <path android:fillColor="#C4506F"
             android:pathData="M88,56 m-7.5,0 a7.5,10 0 1,0 15,0 a7.5,10 0 1,0 -15,0 Z" />
     </group>
 </vector>

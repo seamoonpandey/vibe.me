@@ -22,7 +22,7 @@
     <style name="Theme.Music.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/avd_mascot</item>
-        <item name="windowSplashScreenAnimationDuration">900</item>
+        <item name="windowSplashScreenAnimationDuration">1100</item>
         <item name="postSplashScreenTheme">@style/Theme.Music</item>
     </style>
 </resources>
