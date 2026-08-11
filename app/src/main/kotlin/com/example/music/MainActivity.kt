@@ -246,7 +246,7 @@ private fun Root() {
 private fun PermissionGate(onRequest: () -> Unit) {
     Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Music needs access to the audio on this device.", color = TextHi)
+            Text("v.moon needs access to the audio on this device.", color = TextHi)
             Button(onClick = onRequest, modifier = Modifier.padding(top = 16.dp)) {
                 Text("Grant access")
             }
