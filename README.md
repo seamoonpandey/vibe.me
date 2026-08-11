@@ -3,6 +3,8 @@
 An offline music player for Android. It plays the audio already on your phone — no account, no
 sign-in, no network. Nothing leaves the device.
 
+Got bored of not having a simple, easy music app with no ads. So I built one.
+
 ## What it does
 
 **Library** — Songs, Albums and Artists, read straight from MediaStore. Sort by title, artist,
