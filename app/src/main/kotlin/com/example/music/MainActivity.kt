@@ -75,6 +75,8 @@ import com.example.music.ui.Avatar
 import com.example.music.ui.NameDialog
 import com.example.music.ui.DetailScreen
 import com.example.music.ui.Ink
+import com.example.music.ui.greetingFor
+import com.example.music.ui.promptFor
 import com.example.music.ui.OnAccent
 import com.example.music.ui.LocalAccent
 import com.example.music.ui.LibraryScreen
@@ -321,13 +323,37 @@ private fun AppScaffold(
             if (screen != Screen.Search) {
                 TopAppBar(
                     title = {
-                        Text(
-                            title,
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = TextHi,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        if (screen is Screen.Library) {
+                            // Recomputed per hour rather than per frame, so the line is steady
+                            // while the app is open but still right after midnight.
+                            val now = remember(playback.current) { java.util.Calendar.getInstance() }
+                            val hour = now.get(java.util.Calendar.HOUR_OF_DAY)
+                            val day = now.get(java.util.Calendar.DAY_OF_YEAR)
+                            Column {
+                                Text(
+                                    greetingFor(hour, user.displayName),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = TextHi,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    promptFor(hour, day),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextLo,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        } else {
+                            Text(
+                                title,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = TextHi,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     },
                     navigationIcon = {
                         if (!screen.isTopLevel) {

@@ -135,3 +135,37 @@ class ContractionTest {
         assertEquals("Ma Timro", artist)
     }
 }
+
+class GreetingTest {
+    private fun g(h: Int) = com.example.music.ui.greetingFor(h, "moon")
+
+    @Test
+    fun `each part of the day gets its own greeting`() {
+        assertEquals("Good morning, moon", g(5))
+        assertEquals("Good morning, moon", g(11))
+        assertEquals("Good afternoon, moon", g(12))
+        assertEquals("Good afternoon, moon", g(16))
+        assertEquals("Good evening, moon", g(17))
+        assertEquals("Good evening, moon", g(21))
+    }
+
+    @Test
+    fun `the small hours are not morning`() {
+        // 22:00 through 04:59 is late, not early. Being told "good morning" at 11pm is the bug.
+        assertEquals("Still up, moon", g(22))
+        assertEquals("Still up, moon", g(0))
+        assertEquals("Still up, moon", g(4))
+    }
+
+    @Test
+    fun `no name means no dangling comma`() {
+        assertEquals("Good morning", com.example.music.ui.greetingFor(9, ""))
+        assertEquals("Good morning", com.example.music.ui.greetingFor(9, "   "))
+    }
+
+    @Test
+    fun `the prompt is stable for an hour and always in range`() {
+        assertEquals(com.example.music.ui.promptFor(9, 200), com.example.music.ui.promptFor(9, 200))
+        for (h in 0..23) for (d in 1..366) com.example.music.ui.promptFor(h, d)
+    }
+}
