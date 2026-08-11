@@ -22,6 +22,7 @@ import java.io.OutputStream
 data class UserState(
     val displayName: String = "",
     val avatarUri: String = "",
+    val theme: String = "ROSE",
     val playlists: List<Playlist> = emptyList(),
     val favorites: List<Long> = emptyList(),
     val playCounts: Map<Long, Int> = emptyMap(),

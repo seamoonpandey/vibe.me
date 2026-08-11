@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +55,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,7 +73,6 @@ import com.example.music.data.Tags
 import com.example.music.ui.AddToPlaylistDialog
 import com.example.music.ui.Avatar
 import com.example.music.ui.NameDialog
-import com.example.music.ui.DefaultAccent
 import com.example.music.ui.DetailScreen
 import com.example.music.ui.Ink
 import com.example.music.ui.OnAccent
@@ -78,6 +80,9 @@ import com.example.music.ui.LocalAccent
 import com.example.music.ui.LibraryScreen
 import com.example.music.ui.MiniPlayer
 import com.example.music.ui.MusicTheme
+import com.example.music.ui.ThemeChoice
+import com.example.music.ui.fitTo
+import com.example.music.ui.paletteFor
 import com.example.music.ui.MusicViewModel
 import com.example.music.ui.NowPlayingScreen
 import com.example.music.ui.PlaylistsScreen
@@ -196,18 +201,34 @@ private fun Root() {
         }
     }
 
-    var accent by remember { mutableStateOf(DefaultAccent) }
+    var accent by remember { mutableStateOf<Color?>(null) }
     val currentArt = playback.current?.artUri
-    LaunchedEffect(currentArt) {
+    LaunchedEffect(currentArt, user.theme) {
+        val isDark = runCatching { paletteFor(ThemeChoice.valueOf(user.theme)).dark }.getOrDefault(false)
         accent = currentArt?.let { uri ->
             val result = Deps.images.execute(
                 ImageRequest.Builder(context).data(uri).allowHardware(false).build(),
             )
-            result.image?.toBitmap()?.let(::accentFrom)
-        } ?: DefaultAccent
+            result.image?.toBitmap()?.let(::accentFrom)?.fitTo(isDark)
+        }
     }
 
-    MusicTheme(accent) {
+    val choice = remember(user.theme) {
+        runCatching { ThemeChoice.valueOf(user.theme) }.getOrDefault(ThemeChoice.ROSE)
+    }
+    val dark = paletteFor(choice).dark
+
+    // Status and navigation bar icons have to invert with the page, or they disappear into it.
+    val view = LocalView.current
+    SideEffect {
+        val window = (view.context as android.app.Activity).window
+        WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
+        }
+    }
+
+    MusicTheme(choice, accent) {
         if (!granted) {
             PermissionGate { audioLauncher.launch(permission) }
         } else {

@@ -365,6 +365,8 @@ private fun SeekBar(
     onScrub: (Float) -> Unit,
     onCommit: (Float) -> Unit,
 ) {
+    // Read palette colours here: a Canvas draw lambda is not a composable scope.
+    val track = Hairline
     Canvas(
         Modifier
             .fillMaxWidth()
@@ -383,12 +385,12 @@ private fun SeekBar(
                 }
             },
     ) {
-        val track = 4.dp.toPx()
+        val thickness = 4.dp.toPx()
         val y = size.height / 2f
         val played = size.width * progress
-        drawLine(Hairline, Offset(0f, y), Offset(size.width, y), track, StrokeCap.Round)
+        drawLine(track, Offset(0f, y), Offset(size.width, y), thickness, StrokeCap.Round)
         if (played > 0f) {
-            drawLine(accent, Offset(0f, y), Offset(played, y), track, StrokeCap.Round)
+            drawLine(accent, Offset(0f, y), Offset(played, y), thickness, StrokeCap.Round)
         }
         drawCircle(accent, radius = 7.dp.toPx(), center = Offset(played, y))
     }

@@ -1,6 +1,12 @@
 package com.example.music.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.example.music.data.UserState
 
@@ -43,6 +50,12 @@ fun SettingsScreen(
                 onPickPhoto = onPickPhoto,
             )
         }
+        item {
+            Section("Appearance") {
+                ThemePicker(state.theme) { pick -> onChange { it.copy(theme = pick.name) } }
+            }
+        }
+
         item {
             Section("Playback") {
                 Text(
@@ -188,6 +201,48 @@ private fun SleepTimerControls(state: UserState, onChange: ((UserState) -> UserS
             checked = state.sleepAtTrackEnd,
             onCheckedChange = { on -> onChange { it.copy(sleepAtTrackEnd = on) } },
         )
+    }
+}
+
+/**
+ * Swatches rather than a list of names: the choice is a colour, so it should be shown as one.
+ * Each swatch previews its own page and accent, so you can see what you are picking.
+ */
+@Composable
+private fun ThemePicker(current: String, onPick: (ThemeChoice) -> Unit) {
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        ThemeChoice.entries.forEach { choice ->
+            val p = paletteFor(choice)
+            val selected = choice.name == current
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Box(
+                    Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(p.ink)
+                        .border(
+                            width = if (selected) 3.dp else 1.dp,
+                            color = if (selected) p.accent else Hairline,
+                            shape = CircleShape,
+                        )
+                        .clickable { onPick(choice) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(Modifier.size(22.dp).clip(CircleShape).background(p.accent))
+                }
+                Text(
+                    choice.label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (selected) TextHi else TextLo,
+                )
+            }
+        }
     }
 }
 

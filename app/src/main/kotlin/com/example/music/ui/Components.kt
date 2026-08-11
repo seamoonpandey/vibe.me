@@ -58,7 +58,8 @@ fun Artwork(
     corner: Int = 8,
 ) {
     val shape = RoundedCornerShape(corner.dp)
-    val (top, bottom) = remember(seed) { coverColors(seed) }
+    val dark = LocalPalette.current.dark
+    val (top, bottom) = remember(seed, dark) { coverColors(seed, dark) }
     val initials = remember(seed) { initialsOf(seed) }
 
     Box(
