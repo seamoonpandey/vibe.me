@@ -121,11 +121,11 @@ fun SongRow(
             )
         }
 
-        Text(formatDuration(song.durationMs), style = Numeric, color = TextLo)
-
+        // No duration column. It is the same width on every row and tells you nothing while
+        // browsing; the player and the track sheet both show it when it matters.
         if (onMenu != null) {
             IconButton(onMenu, Modifier.size(44.dp)) {
-                Icon(Icons.Default.MoreVert, "More options", Modifier.size(20.dp), tint = TextLo)
+                Icon(Icons.Default.MoreVert, "More options", Modifier.size(19.dp), tint = TextLo.copy(alpha = 0.6f))
             }
         } else {
             Box(Modifier.width(12.dp))
@@ -173,20 +173,19 @@ fun GridCard(
 
 /** Sticky section heading for a grouped list. */
 @Composable
-fun SectionHeader(text: String, count: Int) {
+fun SectionHeader(text: String, @Suppress("UNUSED_PARAMETER") count: Int) {
     Row(
-        Modifier.fillMaxWidth().background(Ink).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 7.dp),
+        Modifier.fillMaxWidth().background(Ink).padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text.uppercase(),
-            style = MaterialTheme.typography.labelLarge,
-            color = LocalAccent.current,
+            text,
+            style = MaterialTheme.typography.headlineSmall,
+            color = TextHi,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false),
         )
-        Text("  $count", style = Numeric, color = TextLo)
     }
 }
 

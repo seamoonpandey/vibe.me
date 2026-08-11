@@ -59,8 +59,8 @@ private val scheme = lightColorScheme(
 
 private val display = TextStyle(
     fontFamily = FontFamily.SansSerif,
-    fontWeight = FontWeight.Black,
-    letterSpacing = (-1.2).sp,
+    fontWeight = FontWeight.Bold,
+    letterSpacing = (-0.4).sp,
 )
 
 /** Durations, counts, years. Tabular by nature, so they get the tabular face. */
@@ -78,7 +78,7 @@ private val typography = Typography(
     titleMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 21.sp),
     bodyMedium = TextStyle(fontSize = 13.5.sp, lineHeight = 17.sp),
     bodySmall = TextStyle(fontSize = 13.5.sp, lineHeight = 17.sp),
-    labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp, letterSpacing = 0.9.sp),
+    labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 13.sp, letterSpacing = 0.1.sp),
 )
 
 @Composable

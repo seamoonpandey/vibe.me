@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,7 +28,6 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -84,12 +84,12 @@ fun LibraryScreen(
                 Text(
                     entry.name.lowercase().replaceFirstChar(Char::uppercase),
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (selected) OnAccent else TextHi,
+                    color = if (selected) OnAccent else TextLo,
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .background(if (selected) LocalAccent.current else Surface2)
                         .clickable { tab = entry }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 15.dp, vertical = 7.dp),
                 )
             }
         }
@@ -145,46 +145,44 @@ private fun SortBar(
 ) {
     Column {
         Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 9.dp),
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 10.dp, top = 4.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(17.dp), tint = LocalAccent.current)
-            Text(
-                buildString {
-                    append(spec.key.label())
-                    if (showGroup && spec.group != GroupKey.NONE) append(" · by ${spec.group.label().lowercase()}")
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextHi,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(
-                if (spec.descending) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                if (spec.descending) "Descending" else "Ascending",
-                Modifier.size(15.dp),
-                tint = TextLo,
-            )
-            Text("$count", style = Numeric, color = TextLo)
-            // Shuffle belongs next to the ordering, not buried in a menu: it is the other way
-            // people start a library this size.
+            // The order, stated plainly, and the one action worth putting beside it. The sort
+            // glyph, the direction arrow and the track count were three more things to read
+            // before you got to the music.
+            Row(
+                Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onClick)
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    spec.key.label() + if (showGroup && spec.group != GroupKey.NONE) {
+                        " · ${spec.group.label().lowercase()}"
+                    } else "",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = TextHi,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Icon(
+                    if (spec.descending) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                    if (spec.descending) "Descending" else "Ascending",
+                    Modifier.size(14.dp).padding(start = 2.dp),
+                    tint = TextLo,
+                )
+            }
+            Spacer(Modifier.weight(1f))
             Box(
                 Modifier
-                    .padding(start = 10.dp)
                     .clip(CircleShape)
                     .background(LocalAccent.current)
                     .clickable(onClick = onShuffle)
-                    .padding(9.dp),
+                    .padding(10.dp),
             ) {
-                Icon(Icons.Default.Shuffle, "Shuffle everything", Modifier.size(17.dp), tint = OnAccent)
+                Icon(Icons.Default.Shuffle, "Shuffle everything", Modifier.size(18.dp), tint = OnAccent)
             }
         }
-        HorizontalDivider(color = Hairline)
     }
 }
 
