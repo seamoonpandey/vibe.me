@@ -3,6 +3,7 @@ package com.example.music
 import android.Manifest
 import android.content.Intent
 import android.content.IntentSender
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -93,6 +94,10 @@ import com.example.music.ui.shareSong
 import com.example.music.ui.accentFrom
 import kotlinx.coroutines.launch
 
+private fun audioPermission() =
+    if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO
+    else Manifest.permission.READ_EXTERNAL_STORAGE
+
 /** Screen graph. Eight destinations do not need a navigation library. */
 private sealed interface Screen {
     data object Library : Screen
@@ -114,13 +119,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Must precede super/setContentView so the system hands the splash over cleanly.
         val splash = installSplashScreen()
-        // Hold the system splash while the library is being read, so the app never opens on an
-        // empty list. Bounded: if the read stalls, or permission was never granted and nothing is
-        // loading at all, hand over anyway rather than trapping the user on a static icon.
+
+        // Begin the library read here rather than from a LaunchedEffect. The splash's condition is
+        // first evaluated before Compose has run, so a read kicked off during composition has not
+        // started yet and the splash lifts immediately - which is the empty list all over again.
+        val granted = checkSelfPermission(audioPermission()) == PackageManager.PERMISSION_GRANTED
+        if (granted) Deps.library.start()
+
+        // Hold until the library is actually in hand, so nothing loads on the main screen. Bounded
+        // two ways, because a splash that never lifts is worse than what it replaced: only when a
+        // read is genuinely under way, and never past a few seconds.
         val startedAt = System.currentTimeMillis()
         splash.setKeepOnScreenCondition {
-            val waited = System.currentTimeMillis() - startedAt
-            Deps.library.reading.value && waited < 2500
+            granted && !Deps.library.loaded.value && System.currentTimeMillis() - startedAt < 8000
         }
         super.onCreate(savedInstanceState)
         // Cream ground needs dark system-bar icons; the default assumes a dark app.
@@ -156,11 +167,7 @@ private fun Root() {
     val playback by vm.playerState.collectAsStateWithLifecycle()
 
     var granted by remember { mutableStateOf(false) }
-    val permission = if (Build.VERSION.SDK_INT >= 33) {
-        Manifest.permission.READ_MEDIA_AUDIO
-    } else {
-        Manifest.permission.READ_EXTERNAL_STORAGE
-    }
+    val permission = audioPermission()
 
     val context = LocalContext.current
     val audioLauncher = rememberLauncherForActivityResult(

@@ -31,6 +31,7 @@ private val BITRATE = Regex("""[(\[]\s*\d{2,4}\s*k(bps)?\s*[)\]]""", RegexOption
 private val BRACKETED = Regex("""[(\[]([^)\]]*)[)\]]""")
 private val YEAR_TAIL = Regex("""\s*[(\[]\s*(19|20)\d{2}\s*[)\]]\s*$""")
 private val MULTISPACE = Regex("""\s{2,}""")
+private val ARTIST_SPLIT = Regex("""\s+[-–—]\s+""")
 private val EDGE_JUNK = Regex("""^[\s\-–—_,.|·]+|[\s\-–—_,.|·]+$""")
 
 /**
@@ -42,13 +43,15 @@ private fun stripBracketedNoise(s: String) = BRACKETED.replace(s) { m ->
     if (inner.isEmpty() || NOISE.any { inner == it }) "" else m.value
 }
 
+// Compiled once. Building these per call meant ten regex compilations per track, and on a
+// 227-track library that alone cost seconds of the library read.
+private val PHRASE_NOISE_RX = PHRASE_NOISE.map {
+    Regex("""(?<![\p{L}\d])${Regex.escape(it)}(?![\p{L}\d])""", RegexOption.IGNORE_CASE)
+}
+
 private fun stripBareNoise(s: String): String {
     var out = s
-    for (phrase in PHRASE_NOISE) {
-        // Whole phrase only, between word boundaries.
-        out = Regex("""(?<![\p{L}\d])${Regex.escape(phrase)}(?![\p{L}\d])""", RegexOption.IGNORE_CASE)
-            .replace(out, " ")
-    }
+    for (rx in PHRASE_NOISE_RX) out = rx.replace(out, " ")
     return out
 }
 
@@ -110,7 +113,7 @@ fun tidyNames(rawTitle: String, rawArtist: String?): Pair<String, String> {
 
     if (cleanedArtist.isNotBlank()) return cleanedTitle to cleanedArtist
 
-    val split = Regex("""\s+[-–—]\s+""").find(cleanedTitle)
+    val split = ARTIST_SPLIT.find(cleanedTitle)
     if (split != null) {
         val left = EDGE_JUNK.replace(cleanedTitle.substring(0, split.range.first), "").trim()
         val right = EDGE_JUNK.replace(cleanedTitle.substring(split.range.last + 1), "").trim()

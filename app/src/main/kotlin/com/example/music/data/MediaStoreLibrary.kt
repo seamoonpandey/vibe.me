@@ -41,8 +41,13 @@ class MediaStoreLibrary(private val context: Context, private val scope: Corouti
         }
     }
 
+    private var started = false
+
+    /** Idempotent: onCreate starts the read, and the permission callback may ask again. */
     fun start() {
-        if (!_loaded.value) _reading.value = true
+        if (started) return
+        started = true
+        _reading.value = true
         context.contentResolver.registerContentObserver(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true, observer,
         )

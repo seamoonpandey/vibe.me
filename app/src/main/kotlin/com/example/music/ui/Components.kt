@@ -198,36 +198,6 @@ fun SectionHeader(text: String, @Suppress("UNUSED_PARAMETER") count: Int) {
 }
 
 /**
- * Shown while the library is being read.
- *
- * The system splash hands over as soon as the first frame is ready, which can still be before
- * MediaStore has answered. Without this the app would open on a blank list and look broken, so
- * the wait continues here in the app's own colours with something that is visibly moving.
- */
-@Composable
-fun LoadingState(modifier: Modifier = Modifier) {
-    Column(
-        modifier.fillMaxSize().padding(horizontal = 56.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            "Reading your library",
-            style = MaterialTheme.typography.headlineSmall,
-            color = TextHi,
-        )
-        Spacer(Modifier.height(14.dp))
-        LinearProgressIndicator(
-            modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(50)),
-            color = LocalAccent.current,
-            trackColor = Surface2,
-            strokeCap = StrokeCap.Round,
-            gapSize = 0.dp,
-        )
-    }
-}
-
-/**
  * Empty states name the next action rather than apologising. A library with no audio on the device
  * is a different situation from a search that matched nothing, so they say different things.
  */
