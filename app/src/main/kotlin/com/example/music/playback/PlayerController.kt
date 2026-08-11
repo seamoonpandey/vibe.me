@@ -51,7 +51,13 @@ class PlayerController(
         }
     }
 
+    private var connecting = false
+
     fun connect() {
+        // The controller is a process-wide singleton but callers are not; a second connect would
+        // leak a controller and double every listener callback.
+        if (connecting || controller != null) return
+        connecting = true
         val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val future = MediaController.Builder(context, token).buildAsync()
         future.addListener({

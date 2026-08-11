@@ -13,6 +13,7 @@ import com.example.music.data.toArtists
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -60,7 +61,9 @@ class MusicViewModel : ViewModel() {
         if (queueRestored) return
         queueRestored = true
         viewModelScope.launch {
-            val saved = user.value
+            // Not user.value: that StateFlow still holds its placeholder until DataStore's first
+            // read lands, and the library usually wins that race. first() waits for the real one.
+            val saved = userData.state.first()
             if (saved.queue.isEmpty()) return@launch
             val byId = songs.associateBy { it.id }
             val queue = saved.queue.mapNotNull(byId::get)

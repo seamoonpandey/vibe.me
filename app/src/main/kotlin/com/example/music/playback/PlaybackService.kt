@@ -6,7 +6,7 @@ import androidx.media3.common.C
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import com.example.music.data.UserData
+import com.example.music.Deps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,8 +43,9 @@ class PlaybackService : MediaSessionService() {
 
         fx = Fx(player, scope).apply { start() }
         // Settings reach the player by watching the same store the settings screen writes to.
-        val userData = UserData(applicationContext, scope)
-        scope.launch { userData.state.collectLatest { fx?.apply(it) } }
+        // It must be the shared instance: DataStore refuses two active stores over one file, and
+        // this service shares a process with the UI.
+        scope.launch { Deps.userData.state.collectLatest { fx?.apply(it) } }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session
