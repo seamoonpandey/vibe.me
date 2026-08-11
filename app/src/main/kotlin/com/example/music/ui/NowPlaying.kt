@@ -208,7 +208,7 @@ fun NowPlayingScreen(
                     if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     if (state.isPlaying) "Pause" else "Play",
                     Modifier.size(34.dp),
-                    tint = Color.Black,
+                    tint = OnAccent,
                 )
             }
             IconButton(onNext) {

@@ -43,6 +43,33 @@ fun SettingsScreen(
                     steps = 11,
                 )
                 Text(
+                    "Speed: ${"%.2f".format(state.playbackSpeed)}x",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextHi,
+                )
+                Slider(
+                    value = state.playbackSpeed,
+                    onValueChange = { v ->
+                        // Snap to 0.05 steps; a slider that lands on 1.0033x is not usable.
+                        onChange { it.copy(playbackSpeed = (Math.round(v * 20f) / 20f)) }
+                    },
+                    valueRange = 0.5f..2.0f,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Skip silence", color = TextHi, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Shortens quiet gaps inside a track",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextLo,
+                        )
+                    }
+                    Switch(
+                        checked = state.skipSilence,
+                        onCheckedChange = { on -> onChange { it.copy(skipSilence = on) } },
+                    )
+                }
+                Text(
                     "Gapless playback is always on.",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextLo,
@@ -129,6 +156,20 @@ private fun SleepTimerControls(state: UserState, onChange: ((UserState) -> UserS
             selected = false,
             onClick = { onChange { it.copy(sleepTimerEndsAt = 0) } },
             label = { Text("Off") },
+        )
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text("Finish the current track", color = TextHi, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "Wait for the song to end instead of stopping mid-way",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextLo,
+            )
+        }
+        Switch(
+            checked = state.sleepAtTrackEnd,
+            onCheckedChange = { on -> onChange { it.copy(sleepAtTrackEnd = on) } },
         )
     }
 }

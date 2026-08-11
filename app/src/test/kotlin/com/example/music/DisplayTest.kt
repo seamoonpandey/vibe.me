@@ -78,3 +78,38 @@ class DisplayTest {
         assertEquals("?", initialsOf(""))
     }
 }
+
+class SmartListTest {
+    private fun s(id: Long, added: Long) = com.example.music.data.Song(
+        id = id, title = "T$id", artist = "A", album = "Al", albumId = 1,
+        durationMs = 1000, track = 1, year = 2000, dateAdded = added,
+        folder = "f", path = "/p/$id.mp3",
+    )
+
+    private val songs = listOf(s(1, 100), s(2, 300), s(3, 200))
+
+    @Test
+    fun `recently added is newest first`() {
+        val out = com.example.music.data.smartListSongs(
+            com.example.music.data.SmartList.RECENTLY_ADDED, songs, emptyMap(), emptyMap(),
+        )
+        assertEquals(listOf(2L, 3L, 1L), out.map { it.id })
+    }
+
+    @Test
+    fun `most played excludes never-played tracks`() {
+        val out = com.example.music.data.smartListSongs(
+            com.example.music.data.SmartList.MOST_PLAYED, songs, mapOf(1L to 2, 3L to 9), emptyMap(),
+        )
+        assertEquals(listOf(3L, 1L), out.map { it.id })
+    }
+
+    @Test
+    fun `recently played is ordered by last play, not by count`() {
+        val out = com.example.music.data.smartListSongs(
+            com.example.music.data.SmartList.RECENTLY_PLAYED, songs,
+            mapOf(1L to 99), mapOf(1L to 10L, 2L to 50L),
+        )
+        assertEquals(listOf(2L, 1L), out.map { it.id })
+    }
+}

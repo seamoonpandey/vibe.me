@@ -23,6 +23,7 @@ data class UserState(
     val playlists: List<Playlist> = emptyList(),
     val favorites: List<Long> = emptyList(),
     val playCounts: Map<Long, Int> = emptyMap(),
+    val lastPlayed: Map<Long, Long> = emptyMap(),
     val sortBy: Map<String, SortSpec> = emptyMap(),
     val queue: List<Long> = emptyList(),
     val queueIndex: Int = 0,
@@ -30,6 +31,9 @@ data class UserState(
     val shuffle: Boolean = false,
     val repeatMode: Int = 0,
     val crossfadeSeconds: Int = 0,
+    val playbackSpeed: Float = 1f,
+    val skipSilence: Boolean = false,
+    val sleepAtTrackEnd: Boolean = false,
     val sleepTimerEndsAt: Long = 0,
     val eqEnabled: Boolean = false,
     val eqPreset: Int = 0,
@@ -113,7 +117,11 @@ class UserData(context: Context, scope: CoroutineScope) {
     }
 
     suspend fun bumpPlayCount(songId: Long) = edit {
-        it.copy(playCounts = it.playCounts + (songId to (it.playCounts[songId] ?: 0) + 1))
+        it.copy(
+            playCounts = it.playCounts + (songId to (it.playCounts[songId] ?: 0) + 1),
+            // Recorded here so "recently played" needs no separate bookkeeping.
+            lastPlayed = it.lastPlayed + (songId to System.currentTimeMillis()),
+        )
     }
 
     suspend fun setSort(tab: String, spec: SortSpec) = edit {

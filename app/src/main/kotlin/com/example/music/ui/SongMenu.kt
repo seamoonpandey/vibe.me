@@ -11,6 +11,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Person
@@ -45,6 +49,10 @@ fun SongMenuSheet(
     onGoToAlbum: () -> Unit,
     onGoToArtist: () -> Unit,
     onEditTags: () -> Unit,
+    onShare: () -> Unit,
+    onRingtone: () -> Unit,
+    onDelete: () -> Unit,
+    onInfo: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Surface1) {
         Column(Modifier.padding(bottom = 28.dp)) {
@@ -84,6 +92,11 @@ fun SongMenuSheet(
             Item(Icons.Default.Album, "Go to album", onGoToAlbum, onDismiss)
             Item(Icons.Default.Person, "Go to artist", onGoToArtist, onDismiss)
             Item(Icons.Default.Tune, "Edit track details", onEditTags, onDismiss)
+            HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 6.dp))
+            Item(Icons.Default.Share, "Share", onShare, onDismiss)
+            Item(Icons.Default.Notifications, "Set as ringtone", onRingtone, onDismiss)
+            Item(Icons.Default.Info, "Details", onInfo, onDismiss)
+            Item(Icons.Default.DeleteOutline, "Delete from device", onDelete, onDismiss)
         }
     }
 }

@@ -17,6 +17,8 @@ data class Song(
     val dateAdded: Long,
     val folder: String,
     val path: String,
+    val sizeBytes: Long = 0,
+    val mime: String = "",
 ) {
     val uri: Uri get() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
 
@@ -59,3 +61,26 @@ data class SortSpec(
 )
 
 enum class Tab { SONGS, ALBUMS, ARTISTS }
+
+/** Lists the app derives rather than the user curating them. */
+enum class SmartList(val label: String, val blurb: String) {
+    RECENTLY_ADDED("Recently added", "Newest files on this device"),
+    MOST_PLAYED("Most played", "What you come back to"),
+    RECENTLY_PLAYED("Recently played", "Where you left off"),
+}
+
+/** Capped so these stay a shortlist worth scanning, not a second copy of the library. */
+const val SMART_LIST_LIMIT = 100
+
+fun smartListSongs(
+    kind: SmartList,
+    songs: List<Song>,
+    playCounts: Map<Long, Int>,
+    lastPlayed: Map<Long, Long>,
+): List<Song> = when (kind) {
+    SmartList.RECENTLY_ADDED -> songs.sortedByDescending { it.dateAdded }
+    SmartList.MOST_PLAYED -> songs.filter { (playCounts[it.id] ?: 0) > 0 }
+        .sortedByDescending { playCounts[it.id] ?: 0 }
+    SmartList.RECENTLY_PLAYED -> songs.filter { lastPlayed.containsKey(it.id) }
+        .sortedByDescending { lastPlayed[it.id] ?: 0L }
+}.take(SMART_LIST_LIMIT)

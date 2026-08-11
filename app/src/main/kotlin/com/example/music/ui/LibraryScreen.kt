@@ -285,7 +285,7 @@ private fun <T> Chips(options: List<Pair<T, String>>, selected: T, onPick: (T) -
                     containerColor = Surface2,
                     labelColor = TextLo,
                     selectedContainerColor = LocalAccent.current,
-                    selectedLabelColor = Ink,
+                    selectedLabelColor = OnAccent,
                 ),
                 border = null,
             )

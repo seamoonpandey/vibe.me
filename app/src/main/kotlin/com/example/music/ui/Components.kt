@@ -68,7 +68,7 @@ private fun GeneratedCover(seed: String) {
     ) {
         Text(
             text = remember(seed) { initialsOf(seed) },
-            color = Color.White.copy(alpha = 0.82f),
+            color = OnCover.copy(alpha = 0.72f),
             fontSize = 15.sp,
             style = MaterialTheme.typography.labelLarge,
         )

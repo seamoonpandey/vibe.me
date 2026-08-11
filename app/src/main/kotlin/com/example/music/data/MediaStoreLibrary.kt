@@ -56,6 +56,8 @@ class MediaStoreLibrary(private val context: Context, private val scope: Corouti
             MediaStore.Audio.Media.YEAR,
             MediaStore.Audio.Media.DATE_ADDED,
             MediaStore.Audio.Media.DATA,
+            MediaStore.Audio.Media.SIZE,
+            MediaStore.Audio.Media.MIME_TYPE,
         )
         if (Build.VERSION.SDK_INT >= 29) cols += MediaStore.Audio.Media.RELATIVE_PATH
 
@@ -78,6 +80,8 @@ class MediaStoreLibrary(private val context: Context, private val scope: Corouti
             val year = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
             val added = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
             val data = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val size = c.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+            val mime = c.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
             val rel = if (Build.VERSION.SDK_INT >= 29) {
                 c.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
             } else -1
@@ -104,6 +108,8 @@ class MediaStoreLibrary(private val context: Context, private val scope: Corouti
                     dateAdded = c.getLong(added),
                     folder = folder.ifEmpty { "Internal storage" },
                     path = path,
+                    sizeBytes = c.getLong(size),
+                    mime = c.getString(mime).orEmpty(),
                 )
             }
             out

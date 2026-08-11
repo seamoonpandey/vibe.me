@@ -36,6 +36,10 @@ class Fx(private val player: ExoPlayer, private val scope: CoroutineScope) {
     fun apply(state: UserState) {
         settings = state
         applyEffects(state)
+        if (player.playbackParameters.speed != state.playbackSpeed) {
+            player.setPlaybackSpeed(state.playbackSpeed.coerceIn(0.5f, 2.5f))
+        }
+        player.skipSilenceEnabled = state.skipSilence
     }
 
     private fun applyEffects(state: UserState) {
@@ -99,9 +103,17 @@ class Fx(private val player: ExoPlayer, private val scope: CoroutineScope) {
     private suspend fun sleepLoop() {
         while (scope.isActive) {
             delay(1000)
+            if (!player.isPlaying) continue
             val endsAt = settings.sleepTimerEndsAt
-            if (endsAt > 0 && System.currentTimeMillis() >= endsAt && player.isPlaying) {
-                player.pause()
+            val due = endsAt > 0 && System.currentTimeMillis() >= endsAt
+            // "Stop after this track" waits for the deadline to pass AND the track to run out, so
+            // a timer set mid-song never cuts it off part way.
+            if (due) {
+                if (!settings.sleepAtTrackEnd) {
+                    player.pause()
+                } else if (player.duration > 0 && player.duration - player.currentPosition < 1200) {
+                    player.pause()
+                }
             }
         }
     }

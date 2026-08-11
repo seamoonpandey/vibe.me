@@ -57,13 +57,16 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.example.music.data.Album
 import com.example.music.data.Artist
+import com.example.music.data.SmartList
 import com.example.music.data.Song
+import com.example.music.data.smartListSongs
 import com.example.music.data.Tags
 import com.example.music.ui.AddToPlaylistDialog
 import com.example.music.ui.DefaultAccent
 import com.example.music.ui.DetailScreen
 import com.example.music.ui.ExpandingPlayer
 import com.example.music.ui.Ink
+import com.example.music.ui.OnAccent
 import com.example.music.ui.LocalAccent
 import com.example.music.ui.LibraryScreen
 import com.example.music.ui.MiniPlayer
@@ -78,6 +81,10 @@ import com.example.music.ui.Surface1
 import com.example.music.ui.TagEditorDialog
 import com.example.music.ui.TextHi
 import com.example.music.ui.TextLo
+import com.example.music.ui.TrackInfoDialog
+import com.example.music.ui.deleteSong
+import com.example.music.ui.setAsRingtone
+import com.example.music.ui.shareSong
 import com.example.music.ui.accentFrom
 import kotlinx.coroutines.launch
 
@@ -91,6 +98,7 @@ private sealed interface Screen {
     data class ArtistDetail(val artist: Artist) : Screen
     data class PlaylistDetail(val id: Long) : Screen
     data object Favorites : Screen
+    data class Smart(val kind: SmartList) : Screen
 }
 
 private val Screen.isTopLevel: Boolean
@@ -100,7 +108,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Cream ground needs dark system-bar icons; the default assumes a dark app.
+        enableEdgeToEdge(
+            statusBarStyle = androidx.activity.SystemBarStyle.light(
+                android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT,
+            ),
+            navigationBarStyle = androidx.activity.SystemBarStyle.light(
+                android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT,
+            ),
+        )
         startService(Intent(this, com.example.music.playback.PlaybackService::class.java))
         setContent { Root() }
     }
@@ -202,9 +218,11 @@ private fun AppScaffold(
     var addTo by remember { mutableStateOf<List<Long>?>(null) }
     var editing by remember { mutableStateOf<Song?>(null) }
     var menuFor by remember { mutableStateOf<Song?>(null) }
+    var infoFor by remember { mutableStateOf<Song?>(null) }
     var sortSheet by remember { mutableStateOf(false) }
     var creatingPlaylist by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     val writeRequest = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
@@ -222,6 +240,7 @@ private fun AppScaffold(
         Screen.Playlists -> "Playlists"
         Screen.Settings -> "Settings"
         Screen.Favorites -> "Favorites"
+        is Screen.Smart -> s.kind.label
         Screen.Search -> "Search"
         is Screen.AlbumDetail -> s.album.title
         is Screen.ArtistDetail -> s.artist.name
@@ -280,7 +299,8 @@ private fun AppScaffold(
                         screen = Screen.Library
                     }
                     NavItem(
-                        screen is Screen.Playlists || screen is Screen.PlaylistDetail || screen is Screen.Favorites,
+                        screen is Screen.Playlists || screen is Screen.PlaylistDetail ||
+                            screen is Screen.Favorites || screen is Screen.Smart,
                         Icons.AutoMirrored.Filled.QueueMusic, "Playlists",
                     ) { screen = Screen.Playlists }
                     NavItem(screen is Screen.Settings, Icons.Default.Settings, "Settings") {
@@ -315,6 +335,7 @@ private fun AppScaffold(
                     onCreatingChange = { creatingPlaylist = it },
                     onOpen = { screen = Screen.PlaylistDetail(it.id) },
                     onOpenFavorites = { screen = Screen.Favorites },
+                    onOpenSmart = { screen = Screen.Smart(it) },
                     onCreate = vm::createPlaylist,
                     onRename = vm::renamePlaylist,
                     onDelete = vm::deletePlaylist,
@@ -364,6 +385,22 @@ private fun AppScaffold(
                         onPlay = { i -> play(songs, i) },
                         onShuffle = { play(songs.shuffled(), 0) },
                         onSongMenu = { _, i -> vm.removeFromPlaylist(s.id, i) },
+                    )
+                }
+
+                is Screen.Smart -> {
+                    val songs = remember(library.songs, user.playCounts, user.lastPlayed, s.kind) {
+                        smartListSongs(s.kind, library.songs, user.playCounts, user.lastPlayed)
+                    }
+                    DetailScreen(
+                        subtitle = s.kind.blurb,
+                        songs = songs,
+                        contentPadding = padding,
+                        currentSongId = playback.current?.id,
+                        emptyMessage = "Play a few tracks and they will show up here.",
+                        onPlay = { i -> play(songs, i) },
+                        onShuffle = { play(songs.shuffled(), 0) },
+                        onSongMenu = { song, _ -> menuFor = song },
                     )
                 }
 
@@ -420,8 +457,18 @@ private fun AppScaffold(
                     ?.let { screen = Screen.ArtistDetail(it) }
             },
             onEditTags = { editing = song },
+            onShare = { shareSong(context, song) },
+            onRingtone = { setAsRingtone(context, song) },
+            onInfo = { infoFor = song },
+            onDelete = {
+                deleteSong(context, song)?.let {
+                    writeRequest.launch(IntentSenderRequest.Builder(it).build())
+                }
+            },
         )
     }
+
+    infoFor?.let { song -> TrackInfoDialog(song) { infoFor = null } }
 
     addTo?.let { ids ->
         AddToPlaylistDialog(
@@ -451,7 +498,7 @@ private fun AppScaffold(
 }
 
 private fun backTargetFor(screen: Screen): Screen = when (screen) {
-    is Screen.PlaylistDetail, Screen.Favorites -> Screen.Playlists
+    is Screen.PlaylistDetail, Screen.Favorites, is Screen.Smart -> Screen.Playlists
     else -> Screen.Library
 }
 
@@ -468,7 +515,7 @@ private fun androidx.compose.foundation.layout.RowScope.NavItem(
         icon = { Icon(icon, label, Modifier.size(21.dp)) },
         label = { Text(label, style = MaterialTheme.typography.labelLarge) },
         colors = NavigationBarItemDefaults.colors(
-            selectedIconColor = Ink,
+            selectedIconColor = OnAccent,
             selectedTextColor = TextHi,
             indicatorColor = LocalAccent.current,
             unselectedIconColor = TextLo,

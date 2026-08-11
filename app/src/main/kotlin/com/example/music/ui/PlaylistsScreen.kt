@@ -16,6 +16,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.music.data.Playlist
+import com.example.music.data.SmartList
 
 @Composable
 fun PlaylistsScreen(
@@ -42,6 +46,7 @@ fun PlaylistsScreen(
     onCreatingChange: (Boolean) -> Unit,
     onOpen: (Playlist) -> Unit,
     onOpenFavorites: () -> Unit,
+    onOpenSmart: (SmartList) -> Unit,
     onCreate: (String) -> Unit,
     onRename: (Long, String) -> Unit,
     onDelete: (Long) -> Unit,
@@ -49,10 +54,22 @@ fun PlaylistsScreen(
     var renaming by remember { mutableStateOf<Playlist?>(null) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
+        items(SmartList.entries.toList(), key = { "smart_${it.name}" }) { kind ->
+            PlaylistRow(
+                name = kind.label,
+                subtitle = kind.blurb,
+                icon = when (kind) {
+                    SmartList.RECENTLY_ADDED -> Icons.Default.NewReleases
+                    SmartList.MOST_PLAYED -> Icons.Default.TrendingUp
+                    SmartList.RECENTLY_PLAYED -> Icons.Default.History
+                },
+                onClick = { onOpenSmart(kind) },
+            )
+        }
         item(key = "favorites") {
             PlaylistRow(
                 name = "Favorites",
-                count = favoriteCount,
+                subtitle = "$favoriteCount tracks",
                 icon = Icons.Default.Favorite,
                 onClick = onOpenFavorites,
             )
@@ -60,7 +77,7 @@ fun PlaylistsScreen(
         items(playlists, key = { it.id }) { playlist ->
             PlaylistRow(
                 name = playlist.name,
-                count = playlist.songIds.size,
+                subtitle = "${playlist.songIds.size} tracks",
                 onClick = { onOpen(playlist) },
                 onRename = { renaming = playlist },
                 onDelete = { onDelete(playlist.id) },
@@ -83,7 +100,7 @@ fun PlaylistsScreen(
 @Composable
 private fun PlaylistRow(
     name: String,
-    count: Int,
+    subtitle: String,
     onClick: () -> Unit,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     onRename: (() -> Unit)? = null,
@@ -98,7 +115,7 @@ private fun PlaylistRow(
         }
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.titleMedium, color = TextHi, maxLines = 1)
-            Text("$count songs", style = MaterialTheme.typography.bodySmall, color = TextLo)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextLo)
         }
         onRename?.let { IconButton(it) { Icon(Icons.Default.Edit, "Rename", tint = TextLo) } }
         onDelete?.let { IconButton(it) { Icon(Icons.Default.Delete, "Delete", tint = TextLo) } }

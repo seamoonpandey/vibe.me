@@ -103,7 +103,7 @@ private fun DetailHeader(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(
                 onClick = { onPlay(0) },
-                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.Black),
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = OnAccent),
             ) {
                 Icon(Icons.Default.PlayArrow, null, Modifier.size(19.dp))
                 Text("Play", Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelLarge)
