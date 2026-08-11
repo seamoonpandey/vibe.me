@@ -25,9 +25,24 @@ import com.example.music.data.UserState
 fun SettingsScreen(
     state: UserState,
     contentPadding: PaddingValues,
+    trackCount: Int,
+    onEditName: () -> Unit,
+    onPickPhoto: () -> Unit,
     onChange: ((UserState) -> UserState) -> Unit,
 ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
+        item {
+            ProfileHeader(
+                name = state.displayName,
+                avatarUri = state.avatarUri,
+                trackCount = trackCount,
+                playedCount = state.playCounts.size,
+                favouriteCount = state.favorites.size,
+                playlistCount = state.playlists.size,
+                onEdit = onEditName,
+                onPickPhoto = onPickPhoto,
+            )
+        }
         item {
             Section("Playback") {
                 Text(
@@ -38,9 +53,9 @@ fun SettingsScreen(
                 )
                 Slider(
                     value = state.crossfadeSeconds.toFloat(),
-                    onValueChange = { v -> onChange { it.copy(crossfadeSeconds = v.toInt()) } },
+                    onValueChange = { v -> onChange { it.copy(crossfadeSeconds = Math.round(v)) } },
                     valueRange = 0f..12f,
-                    steps = 11,
+                    colors = sliderColors(),
                 )
                 Text(
                     "Speed: ${"%.2f".format(state.playbackSpeed)}x",
@@ -54,6 +69,7 @@ fun SettingsScreen(
                         onChange { it.copy(playbackSpeed = (Math.round(v * 20f) / 20f)) }
                     },
                     valueRange = 0.5f..2.0f,
+                    colors = sliderColors(),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -93,6 +109,7 @@ fun SettingsScreen(
                         value = state.bassBoost.toFloat(),
                         onValueChange = { v -> onChange { it.copy(bassBoost = v.toInt()) } },
                         valueRange = 0f..1000f,
+                        colors = sliderColors(),
                     )
                 }
                 Text(
@@ -173,6 +190,13 @@ private fun SleepTimerControls(state: UserState, onChange: ((UserState) -> UserS
         )
     }
 }
+
+@Composable
+private fun sliderColors() = androidx.compose.material3.SliderDefaults.colors(
+    thumbColor = LocalAccent.current,
+    activeTrackColor = LocalAccent.current,
+    inactiveTrackColor = Surface2,
+)
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {

@@ -20,6 +20,8 @@ import java.io.OutputStream
  */
 @kotlinx.serialization.Serializable
 data class UserState(
+    val displayName: String = "",
+    val avatarUri: String = "",
     val playlists: List<Playlist> = emptyList(),
     val favorites: List<Long> = emptyList(),
     val playCounts: Map<Long, Int> = emptyMap(),
@@ -122,6 +124,10 @@ class UserData(context: Context, scope: CoroutineScope) {
             // Recorded here so "recently played" needs no separate bookkeeping.
             lastPlayed = it.lastPlayed + (songId to System.currentTimeMillis()),
         )
+    }
+
+    suspend fun setProfile(name: String, avatarUri: String) = edit {
+        it.copy(displayName = name.trim(), avatarUri = avatarUri)
     }
 
     suspend fun setSort(tab: String, spec: SortSpec) = edit {

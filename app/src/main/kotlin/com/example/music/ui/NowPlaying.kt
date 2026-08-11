@@ -215,11 +215,12 @@ fun NowPlayingScreen(
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onFavorite) {
+            IconButton(onRepeat) {
                 Icon(
-                    if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    if (isFavorite) "Remove from favorites" else "Add to favorites",
-                    tint = if (isFavorite) accent else TextLo,
+                    if (state.repeatMode == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne
+                    else Icons.Default.Repeat,
+                    "Repeat",
+                    tint = if (state.repeatMode == Player.REPEAT_MODE_OFF) TextLo else accent,
                 )
             }
         }
@@ -269,12 +270,11 @@ fun NowPlayingScreen(
             IconButton(onNext) {
                 Icon(Icons.Default.SkipNext, "Next", Modifier.size(38.dp), tint = TextHi)
             }
-            IconButton(onRepeat) {
+            IconButton(onFavorite) {
                 Icon(
-                    if (state.repeatMode == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne
-                    else Icons.Default.Repeat,
-                    "Repeat",
-                    tint = if (state.repeatMode == Player.REPEAT_MODE_OFF) TextLo else accent,
+                    if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    if (isFavorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (isFavorite) accent else TextLo,
                 )
             }
         }

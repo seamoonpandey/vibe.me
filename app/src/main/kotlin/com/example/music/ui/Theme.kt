@@ -55,6 +55,25 @@ private val scheme = lightColorScheme(
     outlineVariant = Hairline,
     primary = DefaultAccent,
     onPrimary = OnAccent,
+    // Every role has to be stated. Anything left unset falls back to Material's baseline purple,
+    // which is how the sliders ended up lavender on a cream and rose page.
+    primaryContainer = Surface2,
+    onPrimaryContainer = TextHi,
+    secondary = DefaultAccent,
+    onSecondary = OnAccent,
+    secondaryContainer = Surface2,
+    onSecondaryContainer = TextHi,
+    tertiary = DefaultAccent,
+    onTertiary = OnAccent,
+    tertiaryContainer = Surface2,
+    onTertiaryContainer = TextHi,
+    surfaceContainer = Surface1,
+    surfaceContainerHighest = Surface2,
+    surfaceTint = DefaultAccent,
+    inverseSurface = TextHi,
+    inverseOnSurface = Ink,
+    inversePrimary = DefaultAccent,
+    scrim = Color(0x99201A1E),
 )
 
 private val display = TextStyle(

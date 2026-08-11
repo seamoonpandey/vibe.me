@@ -31,7 +31,6 @@ import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -69,6 +68,8 @@ import com.example.music.data.Song
 import com.example.music.data.smartListSongs
 import com.example.music.data.Tags
 import com.example.music.ui.AddToPlaylistDialog
+import com.example.music.ui.Avatar
+import com.example.music.ui.NameDialog
 import com.example.music.ui.DefaultAccent
 import com.example.music.ui.DetailScreen
 import com.example.music.ui.Ink
@@ -243,12 +244,28 @@ private fun AppScaffold(
     var infoFor by remember { mutableStateOf<Song?>(null) }
     var sortSheet by remember { mutableStateOf(false) }
     var creatingPlaylist by remember { mutableStateOf(false) }
+    var editingName by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     val writeRequest = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { }
+
+    // OpenDocument rather than the photo picker: only this contract yields a URI we are allowed
+    // to hold on to across restarts, which an avatar has to survive.
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+            vm.updateSettings { it.copy(avatarUri = uri.toString()) }
+        }
+    }
 
     val songsById = remember(library.songs) { library.songs.associateBy { it.id } }
 
@@ -260,7 +277,7 @@ private fun AppScaffold(
     val title = when (val s = screen) {
         Screen.Library -> "Library"
         Screen.Playlists -> "Playlists"
-        Screen.Settings -> "Settings"
+        Screen.Settings -> "Profile"
         Screen.Favorites -> "Favorites"
         is Screen.Smart -> s.kind.label
         Screen.Search -> "Search"
@@ -327,9 +344,17 @@ private fun AppScaffold(
                             screen is Screen.Favorites || screen is Screen.Smart,
                         Icons.AutoMirrored.Filled.QueueMusic, "Playlists",
                     ) { screen = Screen.Playlists }
-                    NavItem(screen is Screen.Settings, Icons.Default.Settings, "Settings") {
-                        screen = Screen.Settings
-                    }
+                    NavigationBarItem(
+                        selected = screen is Screen.Settings,
+                        onClick = { screen = Screen.Settings },
+                        icon = { Avatar(user.displayName, user.avatarUri, 24) },
+                        label = { Text("Profile", style = MaterialTheme.typography.labelLarge) },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = Color.Transparent,
+                            selectedTextColor = TextHi,
+                            unselectedTextColor = TextLo,
+                        ),
+                    )
                 }
             }
         },
@@ -366,7 +391,14 @@ private fun AppScaffold(
                     onDelete = vm::deletePlaylist,
                 )
 
-                Screen.Settings -> SettingsScreen(user, padding, vm::updateSettings)
+                Screen.Settings -> SettingsScreen(
+                    state = user,
+                    contentPadding = padding,
+                    trackCount = library.songs.size,
+                    onEditName = { editingName = true },
+                    onPickPhoto = { photoPicker.launch(arrayOf("image/*")) },
+                    onChange = vm::updateSettings,
+                )
 
                 Screen.Search -> SearchScreen(
                     songs = library.songs,
@@ -514,6 +546,13 @@ private fun AppScaffold(
             onPick = { vm.addToPlaylist(it, ids) },
             onCreate = { name -> vm.createPlaylist(name) },
         )
+    }
+
+    if (editingName) {
+        NameDialog("Your name", user.displayName, { editingName = false }) {
+            vm.updateSettings { s -> s.copy(displayName = it) }
+            editingName = false
+        }
     }
 
     editing?.let { song ->
