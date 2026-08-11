@@ -29,7 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -303,7 +303,7 @@ private fun AppScaffold(
     }
 
     val title = when (val s = screen) {
-        Screen.Library -> "Library"
+        Screen.Library -> "Home"
         Screen.Playlists -> "Playlists"
         Screen.Settings -> "Profile"
         Screen.Favorites -> "Favorites"
@@ -388,7 +388,7 @@ private fun AppScaffold(
                     onNext = { vm.player.next() },
                 )
                 NavigationBar(containerColor = Surface1, tonalElevation = 0.dp) {
-                    NavItem(screen is Screen.Library, Icons.Default.LibraryMusic, "Library") {
+                    NavItem(screen is Screen.Library, Icons.Default.Home, "Home") {
                         screen = Screen.Library
                     }
                     NavItem(
