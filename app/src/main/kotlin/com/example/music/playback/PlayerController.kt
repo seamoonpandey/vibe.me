@@ -42,8 +42,18 @@ class PlayerController(
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state
 
+    // The queue only changes when the timeline does. Position updates arrive twice a second, and
+    // rebuilding 200-odd items each time was pure waste.
+    private var cachedQueue = emptyList<Song>()
+    private var queueDirty = true
+
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = publish()
+
+        override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+            queueDirty = true
+            publish()
+        }
 
         override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
             publish()
@@ -77,6 +87,7 @@ class PlayerController(
 
     fun setLibrary(songs: List<Song>) {
         songsById = songs.associateBy { it.id }
+        queueDirty = true
         publish()
     }
 
@@ -88,9 +99,13 @@ class PlayerController(
 
     private fun publish() {
         val c = controller ?: return
-        val queue = (0 until c.mediaItemCount).mapNotNull { i ->
-            songsById[c.getMediaItemAt(i).mediaId.toLongOrNull() ?: -1L]
+        if (queueDirty || cachedQueue.size != c.mediaItemCount) {
+            cachedQueue = (0 until c.mediaItemCount).mapNotNull { i ->
+                songsById[c.getMediaItemAt(i).mediaId.toLongOrNull() ?: -1L]
+            }
+            queueDirty = false
         }
+        val queue = cachedQueue
         _state.value = PlayerUiState(
             current = queue.getOrNull(c.currentMediaItemIndex),
             queue = queue,
@@ -155,6 +170,7 @@ class PlayerController(
     fun moveInQueue(from: Int, to: Int) {
         controller?.moveMediaItem(from, to)
         // Keep the visible list in step immediately; the player event follows.
+        cachedQueue = cachedQueue.moved(from, to)
         _state.value = _state.value.let { it.copy(queue = it.queue.moved(from, to)) }
     }
 

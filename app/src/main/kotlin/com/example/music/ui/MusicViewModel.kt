@@ -10,10 +10,12 @@ import com.example.music.data.SortSpec
 import com.example.music.data.UserState
 import com.example.music.data.toAlbums
 import com.example.music.data.toArtists
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -35,7 +37,10 @@ class MusicViewModel : ViewModel() {
         combine(library.songs, library.loaded) { songs, loaded ->
             // Albums and artists are views over the same list, recomputed only when it changes.
             LibraryState(songs, songs.toAlbums(), songs.toArtists(), loaded)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, LibraryState())
+        }
+            // Grouping the whole library is real work; keep it off the frame.
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, LibraryState())
 
     val user: StateFlow<UserState> =
         userData.state.stateIn(viewModelScope, SharingStarted.Eagerly, UserState())

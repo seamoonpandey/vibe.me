@@ -58,7 +58,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
@@ -185,7 +184,7 @@ private fun Root() {
     val currentArt = playback.current?.artUri
     LaunchedEffect(currentArt) {
         accent = currentArt?.let { uri ->
-            val result = ImageLoader(context).execute(
+            val result = Deps.images.execute(
                 ImageRequest.Builder(context).data(uri).allowHardware(false).build(),
             )
             result.image?.toBitmap()?.let(::accentFrom)

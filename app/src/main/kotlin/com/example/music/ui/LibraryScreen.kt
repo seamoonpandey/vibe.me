@@ -197,7 +197,10 @@ private fun SongsTab(
     onMenu: (Song) -> Unit,
 ) {
     // Grouping already sorts, so the flat list is exactly the play order the user sees.
-    val groups = remember(songs, spec, playCounts) { groupSongs(songs, spec, playCounts) }
+    // Only key on play counts when they can actually affect the order. Otherwise finishing a
+    // track re-sorted and re-grouped all 227 rows for nothing.
+    val countsKey = if (spec.key == SortKey.PLAY_COUNT) playCounts else emptyMap()
+    val groups = remember(songs, spec, countsKey) { groupSongs(songs, spec, countsKey) }
     val flat = remember(groups) { groups.flatMap { it.second } }
     val positions = remember(flat) { flat.withIndex().associate { (i, s) -> s.id to i } }
 

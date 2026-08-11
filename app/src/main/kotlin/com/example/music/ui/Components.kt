@@ -32,7 +32,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.AsyncImage
+import com.example.music.Deps
 import com.example.music.data.Song
 import com.example.music.data.formatDuration
 import com.example.music.data.initialsOf
@@ -40,6 +41,10 @@ import com.example.music.data.initialsOf
 /**
  * Artwork, or a generated stand-in. Most files here have no embedded art, so the fallback is not
  * an edge case — it is the common case, and it has to look deliberate.
+ *
+ * The cover is painted underneath and the image composited over it, rather than swapped in through
+ * SubcomposeAsyncImage. Subcomposition costs a separate measure pass per row, which is the wrong
+ * price to pay on every item of a long scrolling list for a fallback that is usually what shows.
  */
 @Composable
 fun Artwork(
@@ -49,28 +54,27 @@ fun Artwork(
     corner: Int = 8,
 ) {
     val shape = RoundedCornerShape(corner.dp)
-    SubcomposeAsyncImage(
-        model = model,
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = modifier.clip(shape),
-        error = { GeneratedCover(seed) },
-        loading = { GeneratedCover(seed) },
-    )
-}
-
-@Composable
-private fun GeneratedCover(seed: String) {
     val (top, bottom) = remember(seed) { coverColors(seed) }
+    val initials = remember(seed) { initialsOf(seed) }
+
     Box(
-        Modifier.fillMaxSize().background(Brush.linearGradient(listOf(top, bottom))),
+        modifier
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(top, bottom))),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = remember(seed) { initialsOf(seed) },
+            text = initials,
             color = OnCover.copy(alpha = 0.72f),
             fontSize = 17.sp,
             style = MaterialTheme.typography.labelLarge,
+        )
+        AsyncImage(
+            model = model,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            imageLoader = Deps.images,
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }
