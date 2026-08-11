@@ -48,6 +48,7 @@ import com.example.music.data.Song
 import com.example.music.data.SortKey
 import com.example.music.data.SortSpec
 import com.example.music.data.Tab as LibTab
+import com.example.music.data.defaultDescending
 import com.example.music.data.groupSongs
 
 @Composable
@@ -247,7 +248,10 @@ private fun SortSheet(
             Text("Sort by", style = MaterialTheme.typography.labelLarge, color = TextLo)
             Chips(SortKey.entries.map { it to it.label() }, spec.key) {
                 // Tapping the active key flips direction — the shortcut every list UI uses.
-                onChange(if (it == spec.key) spec.copy(descending = !spec.descending) else spec.copy(key = it))
+                onChange(
+                    if (it == spec.key) spec.copy(descending = !spec.descending)
+                    else spec.copy(key = it, descending = defaultDescending(it)),
+                )
             }
             Text(
                 if (spec.descending) "Largest or latest first" else "Smallest or earliest first",

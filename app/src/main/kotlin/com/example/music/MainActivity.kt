@@ -7,10 +7,15 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -64,7 +69,6 @@ import com.example.music.data.Tags
 import com.example.music.ui.AddToPlaylistDialog
 import com.example.music.ui.DefaultAccent
 import com.example.music.ui.DetailScreen
-import com.example.music.ui.ExpandingPlayer
 import com.example.music.ui.Ink
 import com.example.music.ui.OnAccent
 import com.example.music.ui.LocalAccent
@@ -247,6 +251,7 @@ private fun AppScaffold(
         is Screen.PlaylistDetail -> user.playlists.firstOrNull { it.id == s.id }?.name ?: "Playlist"
     }
 
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         containerColor = Ink,
         // The top bar owns the status-bar inset. Hand-rolling this header is what previously left
@@ -419,26 +424,36 @@ private fun AppScaffold(
                 }
             }
 
-            ExpandingPlayer(expanded) {
-                NowPlayingScreen(
-                    state = playback,
-                    isFavorite = playback.current?.id in user.favorites,
-                    onCollapse = { expanded = false },
-                    onPlayPause = vm.player::playPause,
-                    onNext = { vm.player.next() },
-                    onPrevious = { vm.player.previous() },
-                    onSeek = { vm.player.seekTo(it) },
-                    onShuffle = vm::toggleShuffle,
-                    onRepeat = vm::cycleRepeat,
-                    onFavorite = { playback.current?.let { vm.toggleFavorite(it.id) } },
-                    onQueueSelect = { vm.player.seekToIndex(it) },
-                    onQueueRemove = { vm.player.removeFromQueue(it) },
-                    onQueueMove = { from, to -> vm.player.moveInQueue(from, to) },
-                    onEditTags = { editing = it },
-                )
-            }
         }
     }
+
+    // Rendered outside the Scaffold so it covers the tab bar; a child could never do that.
+    AnimatedVisibility(
+        visible = expanded,
+        enter = slideInVertically(animationSpec = tween(300)) { it },
+        exit = slideOutVertically(animationSpec = tween(260)) { it },
+    ) {
+        NowPlayingScreen(
+            state = playback,
+            isFavorite = playback.current?.id in user.favorites,
+            onCollapse = { expanded = false },
+            onPlayPause = vm.player::playPause,
+            onNext = { vm.player.next() },
+            onPrevious = { vm.player.previous() },
+            onSeek = { vm.player.seekTo(it) },
+            onShuffle = vm::toggleShuffle,
+            onRepeat = vm::cycleRepeat,
+            onFavorite = { playback.current?.let { vm.toggleFavorite(it.id) } },
+            onQueueSelect = { vm.player.seekToIndex(it) },
+            onQueueRemove = { vm.player.removeFromQueue(it) },
+            onQueueMove = { from, to -> vm.player.moveInQueue(from, to) },
+            onMenu = { menuFor = it },
+        )
+    }
+    }
+
+    // The back gesture should close the player before it leaves the app.
+    BackHandler(enabled = expanded) { expanded = false }
 
     menuFor?.let { song ->
         SongMenuSheet(

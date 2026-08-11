@@ -126,3 +126,47 @@ class ReorderTest {
         assertEquals(list, list.moved(1, 99))
     }
 }
+
+class FuzzySearchTest {
+    private fun s(id: Long, title: String, artist: String = "Nobody", album: String = "Al") =
+        com.example.music.data.Song(
+            id = id, title = title, artist = artist, album = album, albumId = 1,
+            durationMs = 1000, track = 1, year = 2000, dateAdded = id, folder = "f", path = "/p",
+        )
+
+    private val songs = listOf(
+        s(1, "Snowman", "Sia"),
+        s(2, "Somewhere Only We Know", "Keane"),
+        s(3, "The Night We Met", "Lord Huron"),
+        s(4, "Jhol"),
+    )
+
+    @Test
+    fun `prefix beats a match buried in the middle`() {
+        assertEquals(listOf(1L, 2L), filterSongs(songs, "s").map { it.id }.take(2))
+    }
+
+    @Test
+    fun `typing letters in order finds a track without an exact substring`() {
+        // "swok" is a subsequence of "Somewhere Only We Know", not a substring.
+        assertEquals(listOf(2L), filterSongs(songs, "swok").map { it.id })
+    }
+
+    @Test
+    fun `matches the artist as well as the title`() {
+        assertEquals(listOf(3L), filterSongs(songs, "huron").map { it.id })
+    }
+
+    @Test
+    fun `nonsense matches nothing and blank returns nothing`() {
+        assertEquals(emptyList<Long>(), filterSongs(songs, "zzzzq").map { it.id })
+        assertEquals(emptyList<Long>(), filterSongs(songs, "  ").map { it.id })
+    }
+
+    @Test
+    fun `recency keys default to newest first`() {
+        assertEquals(true, com.example.music.data.defaultDescending(SortKey.DATE_ADDED))
+        assertEquals(true, com.example.music.data.defaultDescending(SortKey.PLAY_COUNT))
+        assertEquals(false, com.example.music.data.defaultDescending(SortKey.TITLE))
+    }
+}

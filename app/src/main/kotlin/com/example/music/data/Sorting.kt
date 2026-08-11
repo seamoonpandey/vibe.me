@@ -53,14 +53,64 @@ fun groupSongs(
         }
 }
 
-fun filterSongs(songs: List<Song>, query: String): List<Song> {
-    val q = query.trim().lowercase()
-    if (q.isEmpty()) return emptyList()
-    return songs.filter {
-        it.title.lowercase().contains(q) ||
-            it.artist.lowercase().contains(q) ||
-            it.album.lowercase().contains(q)
+/**
+ * Some keys only make sense one way round. Nobody asks for "recently added" and wants the oldest
+ * file on the device; picking the key should pick the obvious direction with it.
+ */
+fun defaultDescending(key: SortKey) = when (key) {
+    SortKey.DATE_ADDED, SortKey.PLAY_COUNT, SortKey.YEAR -> true
+    else -> false
+}
+
+/**
+ * Fuzzy match of one query against one field.
+ *
+ * Returns null when the query does not match at all, otherwise a score where higher is better.
+ * Three tiers, because they mean genuinely different things to someone typing:
+ *  - the field starts with the query, or a word in it does  -> best
+ *  - the query appears somewhere as a run of characters     -> good
+ *  - the query's letters appear in order but spread out     -> last resort, and the more spread
+ *    out they are the worse it scores, so "sn" prefers "Snowman" over "SomethiNg"
+ */
+fun fuzzyScore(text: String, query: String): Int? {
+    if (query.isEmpty()) return null
+    val t = text.lowercase()
+    val q = query.lowercase()
+
+    if (t.startsWith(q)) return 1000 - t.length
+    if (t.split(' ', '-', '(', '[', '.', ',').any { it.startsWith(q) }) return 900 - t.length
+
+    val direct = t.indexOf(q)
+    if (direct >= 0) return 800 - direct - t.length / 10
+
+    // Subsequence: walk the query through the text, tracking how far apart the hits land.
+    var ti = 0
+    var spread = 0
+    var lastHit = -1
+    for (ch in q) {
+        val found = t.indexOf(ch, ti)
+        if (found < 0) return null
+        if (lastHit >= 0) spread += found - lastHit - 1
+        lastHit = found
+        ti = found + 1
     }
+    return (500 - spread * 4 - t.length / 10).coerceAtLeast(1)
+}
+
+/** Best score across the fields worth searching, weighted so a title hit outranks an album hit. */
+fun songScore(song: Song, query: String): Int? {
+    val title = fuzzyScore(song.title, query)?.plus(50)
+    val artist = fuzzyScore(song.artist, query)?.plus(20)
+    val album = fuzzyScore(song.album, query)
+    return listOfNotNull(title, artist, album).maxOrNull()
+}
+
+fun filterSongs(songs: List<Song>, query: String): List<Song> {
+    val q = query.trim()
+    if (q.isEmpty()) return emptyList()
+    return songs.mapNotNull { song -> songScore(song, q)?.let { song to it } }
+        .sortedWith(compareByDescending<Pair<Song, Int>> { it.second }.thenBy { it.first.title.lowercase() })
+        .map { it.first }
 }
 
 fun formatDuration(ms: Long): String {
