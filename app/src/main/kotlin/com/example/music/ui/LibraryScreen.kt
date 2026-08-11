@@ -109,7 +109,7 @@ fun LibraryScreen(
 
         val listPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding())
         when {
-            !state.loaded -> Box(Modifier.fillMaxSize())
+            !state.loaded -> LoadingState()
             state.songs.isEmpty() -> EmptyState(
                 "No audio on this device",
                 "Add music to your phone's storage and it will appear here.",

@@ -26,6 +26,15 @@ class MediaStoreLibrary(private val context: Context, private val scope: Corouti
     private val _loaded = MutableStateFlow(false)
     val loaded: StateFlow<Boolean> = _loaded
 
+    /**
+     * True between being asked for the library and having it. The splash screen polls this to
+     * decide whether it is worth holding, so it must only be set once a read is genuinely under
+     * way — never before permission is granted, or the splash would wait for something that is
+     * not happening.
+     */
+    private val _reading = MutableStateFlow(false)
+    val reading: StateFlow<Boolean> = _reading
+
     private val observer = object : ContentObserver(null) {
         override fun onChange(selfChange: Boolean) {
             scope.launch { load() }
@@ -33,6 +42,7 @@ class MediaStoreLibrary(private val context: Context, private val scope: Corouti
     }
 
     fun start() {
+        if (!_loaded.value) _reading.value = true
         context.contentResolver.registerContentObserver(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true, observer,
         )
@@ -42,6 +52,7 @@ class MediaStoreLibrary(private val context: Context, private val scope: Corouti
     suspend fun load() = withContext(Dispatchers.IO) {
         _songs.value = query()
         _loaded.value = true
+        _reading.value = false
     }
 
     private fun query(): List<Song> {

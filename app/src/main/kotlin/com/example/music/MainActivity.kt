@@ -113,7 +113,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Must precede super/setContentView so the system hands the splash over cleanly.
-        installSplashScreen()
+        val splash = installSplashScreen()
+        // Hold the system splash while the library is being read, so the app never opens on an
+        // empty list. Bounded: if the read stalls, or permission was never granted and nothing is
+        // loading at all, hand over anyway rather than trapping the user on a static icon.
+        val startedAt = System.currentTimeMillis()
+        splash.setKeepOnScreenCondition {
+            val waited = System.currentTimeMillis() - startedAt
+            Deps.library.reading.value && waited < 2500
+        }
         super.onCreate(savedInstanceState)
         // Cream ground needs dark system-bar icons; the default assumes a dark app.
         enableEdgeToEdge(
