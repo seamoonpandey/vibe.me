@@ -75,9 +75,9 @@ private val typography = Typography(
     displaySmall = display.copy(fontSize = 32.sp, lineHeight = 36.sp),
     headlineMedium = display.copy(fontSize = 24.sp, lineHeight = 28.sp),
     headlineSmall = display.copy(fontSize = 19.sp, lineHeight = 23.sp, letterSpacing = (-0.5).sp),
-    titleMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 21.sp),
+    titleMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 18.sp),
     bodyMedium = TextStyle(fontSize = 13.5.sp, lineHeight = 17.sp),
-    bodySmall = TextStyle(fontSize = 13.5.sp, lineHeight = 17.sp),
+    bodySmall = TextStyle(fontSize = 12.5.sp, lineHeight = 15.sp),
     labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 13.sp, letterSpacing = 0.1.sp),
 )
 

@@ -66,7 +66,7 @@ fun Artwork(
         Text(
             text = initials,
             color = OnCover.copy(alpha = 0.72f),
-            fontSize = 17.sp,
+            fontSize = 15.sp,
             style = MaterialTheme.typography.labelLarge,
         )
         AsyncImage(
@@ -93,11 +93,11 @@ fun SongRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, end = 4.dp, top = 9.dp, bottom = 9.dp),
+            .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (index != null) {
-            Box(Modifier.width(34.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.width(30.dp), contentAlignment = Alignment.Center) {
                 if (playing) {
                     Icon(Icons.Default.GraphicEq, "Now playing", Modifier.size(16.dp), tint = accent)
                 } else {
@@ -105,10 +105,10 @@ fun SongRow(
                 }
             }
         } else {
-            Artwork(song.artUri, song.title, Modifier.size(56.dp), corner = 8)
+            Artwork(song.artUri, song.title, Modifier.size(48.dp), corner = 6)
         }
 
-        Column(Modifier.weight(1f).padding(start = 13.dp, end = 8.dp)) {
+        Column(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
             Text(
                 song.title,
                 style = MaterialTheme.typography.titleMedium,
@@ -128,7 +128,7 @@ fun SongRow(
         // No duration column. It is the same width on every row and tells you nothing while
         // browsing; the player and the track sheet both show it when it matters.
         if (onMenu != null) {
-            IconButton(onMenu, Modifier.size(44.dp)) {
+            IconButton(onMenu, Modifier.size(40.dp)) {
                 Icon(Icons.Default.MoreVert, "More options", Modifier.size(19.dp), tint = TextLo.copy(alpha = 0.6f))
             }
         } else {
@@ -179,7 +179,7 @@ fun GridCard(
 @Composable
 fun SectionHeader(text: String, @Suppress("UNUSED_PARAMETER") count: Int) {
     Row(
-        Modifier.fillMaxWidth().background(Ink).padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 8.dp),
+        Modifier.fillMaxWidth().background(Ink).padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
