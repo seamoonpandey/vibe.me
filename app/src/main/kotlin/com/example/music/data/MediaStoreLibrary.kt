@@ -89,11 +89,13 @@ class MediaStoreLibrary(private val context: Context, private val scope: Corouti
                     rel >= 0 -> c.getString(rel)?.trimEnd('/')?.substringAfterLast('/').orEmpty()
                     else -> File(path).parentFile?.name.orEmpty()
                 }
+                // Clean once, here, rather than on every recomposition of every row.
+                val (cleanTitle, cleanArtist) = tidyNames(c.getString(title) ?: "", c.getString(artist))
                 out += Song(
                     id = c.getLong(id),
-                    title = c.getString(title) ?: "Unknown",
-                    artist = c.getString(artist).orUnknown(),
-                    album = c.getString(album).orUnknown(),
+                    title = cleanTitle,
+                    artist = cleanArtist,
+                    album = tidyAlbum(c.getString(album)),
                     albumId = c.getLong(albumId),
                     durationMs = c.getLong(duration),
                     // MediaStore encodes disc number as the thousands digit: 1004 = disc 1, track 4.

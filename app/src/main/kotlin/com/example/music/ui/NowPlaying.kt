@@ -79,7 +79,7 @@ fun MiniPlayer(state: PlayerUiState, onExpand: () -> Unit, onPlayPause: () -> Un
             Modifier.fillMaxWidth().padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Artwork(song.artUri, Modifier.size(44.dp))
+            Artwork(song.artUri, song.title, Modifier.size(44.dp), corner = 6)
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                 Text(song.title, style = MaterialTheme.typography.titleMedium, color = TextHi,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -144,7 +144,7 @@ fun NowPlayingScreen(
             )
         } else {
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                Artwork(song.artUri, Modifier.fillMaxWidth().aspectRatio(1f), corner = 12)
+                Artwork(song.artUri, song.title, Modifier.fillMaxWidth().aspectRatio(1f), corner = 14)
             }
         }
 
@@ -252,7 +252,7 @@ private fun QueueList(
                     SongRow(
                         song = song,
                         index = i + 1,
-                        highlighted = i == state.index,
+                        playing = i == state.index,
                         onClick = { onSelect(i) },
                     )
                 }

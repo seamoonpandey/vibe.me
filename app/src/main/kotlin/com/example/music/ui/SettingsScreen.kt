@@ -28,8 +28,6 @@ fun SettingsScreen(
     onChange: ((UserState) -> UserState) -> Unit,
 ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
-        item { ScreenTitle("Settings") }
-
         item {
             Section("Playback") {
                 Text(

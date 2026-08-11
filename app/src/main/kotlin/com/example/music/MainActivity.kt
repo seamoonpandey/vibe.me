@@ -16,16 +16,26 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -46,7 +57,6 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.example.music.data.Album
 import com.example.music.data.Artist
-import com.example.music.data.Playlist
 import com.example.music.data.Song
 import com.example.music.data.Tags
 import com.example.music.ui.AddToPlaylistDialog
@@ -54,6 +64,7 @@ import com.example.music.ui.DefaultAccent
 import com.example.music.ui.DetailScreen
 import com.example.music.ui.ExpandingPlayer
 import com.example.music.ui.Ink
+import com.example.music.ui.LocalAccent
 import com.example.music.ui.LibraryScreen
 import com.example.music.ui.MiniPlayer
 import com.example.music.ui.MusicTheme
@@ -62,6 +73,7 @@ import com.example.music.ui.NowPlayingScreen
 import com.example.music.ui.PlaylistsScreen
 import com.example.music.ui.SearchScreen
 import com.example.music.ui.SettingsScreen
+import com.example.music.ui.SongMenuSheet
 import com.example.music.ui.Surface1
 import com.example.music.ui.TagEditorDialog
 import com.example.music.ui.TextHi
@@ -69,7 +81,7 @@ import com.example.music.ui.TextLo
 import com.example.music.ui.accentFrom
 import kotlinx.coroutines.launch
 
-/** Screen graph. Seven destinations do not need a navigation library. */
+/** Screen graph. Eight destinations do not need a navigation library. */
 private sealed interface Screen {
     data object Library : Screen
     data object Playlists : Screen
@@ -81,12 +93,14 @@ private sealed interface Screen {
     data object Favorites : Screen
 }
 
+private val Screen.isTopLevel: Boolean
+    get() = this is Screen.Library || this is Screen.Playlists || this is Screen.Settings
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Keep the service alive across the activity's own lifecycle so playback never blips.
         startService(Intent(this, com.example.music.playback.PlaybackService::class.java))
         setContent { Root() }
     }
@@ -94,10 +108,10 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         // Cheapest moment to checkpoint the queue; the process may not get another one.
-        (Deps.player.state.value.queue.isNotEmpty()).let {
-            if (it) Deps.scope.launch {
-                val s = Deps.player.state.value
-                Deps.userData.saveQueue(s.queue.map { song -> song.id }, s.index, s.positionMs)
+        val s = Deps.player.state.value
+        if (s.queue.isNotEmpty()) {
+            Deps.scope.launch {
+                Deps.userData.saveQueue(s.queue.map { it.id }, s.index, s.positionMs, s.shuffle, s.repeatMode)
             }
         }
     }
@@ -143,7 +157,6 @@ private fun Root() {
         }
     }
 
-    // Accent follows the artwork of whatever is playing.
     var accent by remember { mutableStateOf(DefaultAccent) }
     val currentArt = playback.current?.artUri
     LaunchedEffect(currentArt) {
@@ -176,6 +189,7 @@ private fun PermissionGate(onRequest: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AppScaffold(
     vm: MusicViewModel,
@@ -187,8 +201,10 @@ private fun AppScaffold(
     var expanded by remember { mutableStateOf(false) }
     var addTo by remember { mutableStateOf<List<Long>?>(null) }
     var editing by remember { mutableStateOf<Song?>(null) }
+    var menuFor by remember { mutableStateOf<Song?>(null) }
+    var sortSheet by remember { mutableStateOf(false) }
+    var creatingPlaylist by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     val writeRequest = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
@@ -201,8 +217,56 @@ private fun AppScaffold(
         vm.saveQueue()
     }
 
+    val title = when (val s = screen) {
+        Screen.Library -> "Library"
+        Screen.Playlists -> "Playlists"
+        Screen.Settings -> "Settings"
+        Screen.Favorites -> "Favorites"
+        Screen.Search -> "Search"
+        is Screen.AlbumDetail -> s.album.title
+        is Screen.ArtistDetail -> s.artist.name
+        is Screen.PlaylistDetail -> user.playlists.firstOrNull { it.id == s.id }?.name ?: "Playlist"
+    }
+
     Scaffold(
         containerColor = Ink,
+        // The top bar owns the status-bar inset. Hand-rolling this header is what previously left
+        // the sort and search controls underneath the status bar, where taps never reached them.
+        topBar = {
+            if (screen != Screen.Search) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            title,
+                            style = if (screen.isTopLevel) MaterialTheme.typography.displaySmall
+                            else MaterialTheme.typography.headlineSmall,
+                            color = TextHi,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    navigationIcon = {
+                        if (!screen.isTopLevel) {
+                            IconButton({ screen = backTargetFor(screen) }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi)
+                            }
+                        }
+                    },
+                    actions = {
+                        when (screen) {
+                            Screen.Library -> IconButton({ screen = Screen.Search }) {
+                                Icon(Icons.Default.Search, "Search", tint = TextHi)
+                            }
+                            Screen.Playlists -> IconButton({ creatingPlaylist = true }) {
+                                Icon(Icons.Default.Add, "New playlist", tint = TextHi)
+                            }
+                            else -> Unit
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink),
+                )
+            }
+        },
         bottomBar = {
             Column {
                 MiniPlayer(
@@ -211,16 +275,15 @@ private fun AppScaffold(
                     onPlayPause = vm.player::playPause,
                     onNext = { vm.player.next() },
                 )
-                NavigationBar(containerColor = Surface1) {
-                    NavBarItem(screen is Screen.Library || screen is Screen.AlbumDetail ||
-                        screen is Screen.ArtistDetail, Icons.Default.LibraryMusic, "Library") {
+                NavigationBar(containerColor = Surface1, tonalElevation = 0.dp) {
+                    NavItem(screen is Screen.Library, Icons.Default.LibraryMusic, "Library") {
                         screen = Screen.Library
                     }
-                    NavBarItem(screen is Screen.Playlists || screen is Screen.PlaylistDetail ||
-                        screen is Screen.Favorites, Icons.AutoMirrored.Filled.QueueMusic, "Playlists") {
-                        screen = Screen.Playlists
-                    }
-                    NavBarItem(screen is Screen.Settings, Icons.Default.Settings, "Settings") {
+                    NavItem(
+                        screen is Screen.Playlists || screen is Screen.PlaylistDetail || screen is Screen.Favorites,
+                        Icons.AutoMirrored.Filled.QueueMusic, "Playlists",
+                    ) { screen = Screen.Playlists }
+                    NavItem(screen is Screen.Settings, Icons.Default.Settings, "Settings") {
                         screen = Screen.Settings
                     }
                 }
@@ -234,18 +297,22 @@ private fun AppScaffold(
                     sortByTab = user.sortBy,
                     playCounts = user.playCounts,
                     currentSongId = playback.current?.id,
-                    contentPadding = PaddingValues(bottom = padding.calculateBottomPadding()),
+                    contentPadding = padding,
+                    sortSheetOpen = sortSheet,
+                    onSortSheetOpen = { sortSheet = it },
                     onPlaySongs = ::play,
                     onOpenAlbum = { screen = Screen.AlbumDetail(it) },
                     onOpenArtist = { screen = Screen.ArtistDetail(it) },
                     onSortChange = vm::setSort,
-                    onSearch = { screen = Screen.Search },
+                    onSongMenu = { menuFor = it },
                 )
 
                 Screen.Playlists -> PlaylistsScreen(
                     playlists = user.playlists,
                     favoriteCount = user.favorites.size,
                     contentPadding = padding,
+                    creating = creatingPlaylist,
+                    onCreatingChange = { creatingPlaylist = it },
                     onOpen = { screen = Screen.PlaylistDetail(it.id) },
                     onOpenFavorites = { screen = Screen.Favorites },
                     onCreate = vm::createPlaylist,
@@ -261,44 +328,39 @@ private fun AppScaffold(
                     currentSongId = playback.current?.id,
                     onBack = { screen = Screen.Library },
                     onPlay = ::play,
+                    onSongMenu = { menuFor = it },
                 )
 
                 is Screen.AlbumDetail -> DetailScreen(
-                    title = s.album.title,
-                    subtitle = s.album.artist,
+                    subtitle = "${s.album.songs.size} tracks",
                     songs = s.album.songs,
                     contentPadding = padding,
                     currentSongId = playback.current?.id,
-                    onBack = { screen = Screen.Library },
                     onPlay = { i -> play(s.album.songs, i) },
                     onShuffle = { play(s.album.songs.shuffled(), 0) },
-                    onSongMenu = { song, _ -> addTo = listOf(song.id) },
+                    onSongMenu = { song, _ -> menuFor = song },
                 )
 
                 is Screen.ArtistDetail -> DetailScreen(
-                    title = s.artist.name,
-                    subtitle = "${s.artist.albumCount} albums",
+                    subtitle = "${s.artist.songs.size} tracks",
                     songs = s.artist.songs,
                     contentPadding = padding,
                     currentSongId = playback.current?.id,
                     roundArt = true,
-                    numbered = false,
-                    onBack = { screen = Screen.Library },
                     onPlay = { i -> play(s.artist.songs, i) },
                     onShuffle = { play(s.artist.songs.shuffled(), 0) },
-                    onSongMenu = { song, _ -> addTo = listOf(song.id) },
+                    onSongMenu = { song, _ -> menuFor = song },
                 )
 
                 is Screen.PlaylistDetail -> {
                     val playlist = user.playlists.firstOrNull { it.id == s.id }
                     val songs = playlist?.songIds?.mapNotNull(songsById::get).orEmpty()
                     DetailScreen(
-                        title = playlist?.name ?: "Playlist",
                         subtitle = "Playlist",
                         songs = songs,
                         contentPadding = padding,
                         currentSongId = playback.current?.id,
-                        onBack = { screen = Screen.Playlists },
+                        emptyMessage = "Nothing here yet. Add tracks from the library.",
                         onPlay = { i -> play(songs, i) },
                         onShuffle = { play(songs.shuffled(), 0) },
                         onSongMenu = { _, i -> vm.removeFromPlaylist(s.id, i) },
@@ -308,12 +370,11 @@ private fun AppScaffold(
                 Screen.Favorites -> {
                     val songs = user.favorites.mapNotNull(songsById::get)
                     DetailScreen(
-                        title = "Favorites",
                         subtitle = "Playlist",
                         songs = songs,
                         contentPadding = padding,
                         currentSongId = playback.current?.id,
-                        onBack = { screen = Screen.Playlists },
+                        emptyMessage = "Tap the heart on any track to save it here.",
                         onPlay = { i -> play(songs, i) },
                         onShuffle = { play(songs.shuffled(), 0) },
                         onSongMenu = { song, _ -> vm.toggleFavorite(song.id) },
@@ -330,8 +391,8 @@ private fun AppScaffold(
                     onNext = { vm.player.next() },
                     onPrevious = { vm.player.previous() },
                     onSeek = { vm.player.seekTo(it) },
-                    onShuffle = { vm.player.toggleShuffle() },
-                    onRepeat = { vm.player.cycleRepeat() },
+                    onShuffle = vm::toggleShuffle,
+                    onRepeat = vm::cycleRepeat,
                     onFavorite = { playback.current?.let { vm.toggleFavorite(it.id) } },
                     onQueueSelect = { vm.player.seekToIndex(it) },
                     onQueueRemove = { vm.player.removeFromQueue(it) },
@@ -340,6 +401,26 @@ private fun AppScaffold(
                 )
             }
         }
+    }
+
+    menuFor?.let { song ->
+        SongMenuSheet(
+            song = song,
+            isFavorite = song.id in user.favorites,
+            onDismiss = { menuFor = null },
+            onPlayNext = { vm.player.playNext(listOf(song)) },
+            onAddToQueue = { vm.player.addToQueue(listOf(song)) },
+            onAddToPlaylist = { addTo = listOf(song.id) },
+            onToggleFavorite = { vm.toggleFavorite(song.id) },
+            onGoToAlbum = {
+                library.albums.firstOrNull { it.id == song.albumId }?.let { screen = Screen.AlbumDetail(it) }
+            },
+            onGoToArtist = {
+                library.artists.firstOrNull { it.name.equals(song.artist, true) }
+                    ?.let { screen = Screen.ArtistDetail(it) }
+            },
+            onEditTags = { editing = song },
+        )
     }
 
     addTo?.let { ids ->
@@ -369,8 +450,13 @@ private fun AppScaffold(
     }
 }
 
+private fun backTargetFor(screen: Screen): Screen = when (screen) {
+    is Screen.PlaylistDetail, Screen.Favorites -> Screen.Playlists
+    else -> Screen.Library
+}
+
 @Composable
-private fun androidx.compose.foundation.layout.RowScope.NavBarItem(
+private fun androidx.compose.foundation.layout.RowScope.NavItem(
     selected: Boolean,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
@@ -379,11 +465,12 @@ private fun androidx.compose.foundation.layout.RowScope.NavBarItem(
     NavigationBarItem(
         selected = selected,
         onClick = onClick,
-        icon = { Icon(icon, label) },
-        label = { Text(label) },
-        colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-            selectedIconColor = Color.Black,
+        icon = { Icon(icon, label, Modifier.size(21.dp)) },
+        label = { Text(label, style = MaterialTheme.typography.labelLarge) },
+        colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = Ink,
             selectedTextColor = TextHi,
+            indicatorColor = LocalAccent.current,
             unselectedIconColor = TextLo,
             unselectedTextColor = TextLo,
         ),

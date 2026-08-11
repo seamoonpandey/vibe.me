@@ -38,24 +38,17 @@ fun PlaylistsScreen(
     playlists: List<Playlist>,
     favoriteCount: Int,
     contentPadding: PaddingValues,
+    creating: Boolean,
+    onCreatingChange: (Boolean) -> Unit,
     onOpen: (Playlist) -> Unit,
     onOpenFavorites: () -> Unit,
     onCreate: (String) -> Unit,
     onRename: (Long, String) -> Unit,
     onDelete: (Long) -> Unit,
 ) {
-    var creating by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<Playlist?>(null) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
-        item(key = "title") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ScreenTitle("Playlists", Modifier.weight(1f))
-                IconButton({ creating = true }) {
-                    Icon(Icons.Default.Add, "New playlist", tint = TextHi)
-                }
-            }
-        }
         item(key = "favorites") {
             PlaylistRow(
                 name = "Favorites",
@@ -76,7 +69,9 @@ fun PlaylistsScreen(
     }
 
     if (creating) {
-        NameDialog("New playlist", "", { creating = false }) { onCreate(it); creating = false }
+        NameDialog("New playlist", "", { onCreatingChange(false) }) {
+            onCreate(it); onCreatingChange(false)
+        }
     }
     renaming?.let { target ->
         NameDialog("Rename", target.name, { renaming = null }) {

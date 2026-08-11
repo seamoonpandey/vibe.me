@@ -120,8 +120,21 @@ class UserData(context: Context, scope: CoroutineScope) {
         it.copy(sortBy = it.sortBy + (tab to spec))
     }
 
-    suspend fun saveQueue(ids: List<Long>, index: Int, positionMs: Long) = edit {
-        it.copy(queue = ids, queueIndex = index, queuePositionMs = positionMs)
+    /** Shuffle and repeat ride along with the queue: they are all "where playback was". */
+    suspend fun saveQueue(
+        ids: List<Long>,
+        index: Int,
+        positionMs: Long,
+        shuffle: Boolean,
+        repeatMode: Int,
+    ) = edit {
+        it.copy(
+            queue = ids,
+            queueIndex = index,
+            queuePositionMs = positionMs,
+            shuffle = shuffle,
+            repeatMode = repeatMode,
+        )
     }
 }
 

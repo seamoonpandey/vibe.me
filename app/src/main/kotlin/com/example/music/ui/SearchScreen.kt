@@ -36,6 +36,7 @@ fun SearchScreen(
     currentSongId: Long?,
     onBack: () -> Unit,
     onPlay: (List<Song>, Int) -> Unit,
+    onSongMenu: (Song) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
@@ -73,8 +74,9 @@ fun SearchScreen(
                 items(results, key = { it.id }, contentType = { "song" }) { song ->
                     SongRow(
                         song = song,
-                        highlighted = song.id == currentSongId,
+                        playing = song.id == currentSongId,
                         onClick = { onPlay(results, results.indexOf(song)) },
+                        onMenu = { onSongMenu(song) },
                     )
                 }
             }

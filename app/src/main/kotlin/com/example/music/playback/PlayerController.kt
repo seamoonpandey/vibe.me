@@ -129,6 +129,12 @@ class PlayerController(
 
     fun toggleShuffle() = controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled }
 
+    /** Reapply the modes the user last chose, on restore. */
+    fun setModes(shuffle: Boolean, repeatMode: Int) = controller?.let {
+        it.shuffleModeEnabled = shuffle
+        it.repeatMode = repeatMode
+    }
+
     fun cycleRepeat() = controller?.let {
         it.repeatMode = when (it.repeatMode) {
             Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL

@@ -74,6 +74,7 @@ class MusicViewModel : ViewModel() {
                 positionMs = saved.queuePositionMs,
                 autoPlay = false,
             )
+            player.setModes(saved.shuffle, saved.repeatMode)
         }
     }
 
@@ -81,8 +82,22 @@ class MusicViewModel : ViewModel() {
         val s = playerState.value
         if (s.queue.isEmpty()) return
         viewModelScope.launch {
-            userData.saveQueue(s.queue.map { it.id }, s.index, s.positionMs)
+            userData.saveQueue(s.queue.map { it.id }, s.index, s.positionMs, s.shuffle, s.repeatMode)
         }
+    }
+
+    /**
+     * Mode changes checkpoint immediately. Relying on onStop would lose them whenever the process
+     * is killed outright rather than backgrounded.
+     */
+    fun toggleShuffle() {
+        player.toggleShuffle()
+        saveQueue()
+    }
+
+    fun cycleRepeat() {
+        player.cycleRepeat()
+        saveQueue()
     }
 
     // --- user data passthroughs; the UI has no business knowing about DataStore ---
