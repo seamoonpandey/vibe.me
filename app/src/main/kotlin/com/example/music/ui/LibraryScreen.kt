@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -33,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -109,6 +111,9 @@ fun LibraryScreen(
 
         val listPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding())
         when {
+            // Nothing at all until the read finishes. "No audio on this device" is a real answer
+            // to a real question, and showing it before we have looked is simply wrong.
+            !state.loaded -> Box(Modifier.fillMaxSize())
             state.songs.isEmpty() -> EmptyState(
                 "No audio on this device",
                 "Add music to your phone's storage and it will appear here.",
@@ -203,7 +208,13 @@ private fun SongsTab(
     val flat = remember(groups) { groups.flatMap { it.second } }
     val positions = remember(flat) { flat.withIndex().associate { (i, s) -> s.id to i } }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
+    // Reordering keeps the anchor item on screen, which is right for a stable list and wrong
+    // here: at startup the list renders under the default sort, then the saved one arrives, and
+    // holding the anchor leaves you somewhere in the middle. A new order starts at the top.
+    val listState = rememberLazyListState()
+    LaunchedEffect(spec) { listState.scrollToItem(0) }
+
+    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = contentPadding) {
         groups.forEach { (label, items) ->
             if (label.isNotEmpty()) {
                 item(key = "h_$label", contentType = "header") { SectionHeader(label, items.size) }
