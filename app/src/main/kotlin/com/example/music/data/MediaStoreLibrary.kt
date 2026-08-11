@@ -125,9 +125,11 @@ fun List<Song>.toAlbums(): List<Album> =
     }.sortedBy { it.title.lowercase() }
 
 fun List<Song>.toArtists(): List<Artist> =
-    groupBy { it.artist }.map { (name, songs) ->
+    // Tags are hand-typed, so "Kestrel" and "kestrel" are one artist. Fold on case, then display
+    // whichever spelling appears on the most tracks.
+    groupBy { it.artist.lowercase() }.map { (_, songs) ->
         Artist(
-            name = name,
+            name = songs.groupingBy { it.artist }.eachCount().maxBy { it.value }.key,
             albumCount = songs.distinctBy { it.albumId }.size,
             songs = songs.sortedWith(compareBy({ it.album }, { it.track }, { it.title })),
         )

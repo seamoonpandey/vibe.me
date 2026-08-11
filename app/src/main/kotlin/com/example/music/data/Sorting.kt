@@ -42,9 +42,15 @@ fun groupSongs(
 ): List<Pair<String, List<Song>>> {
     val sorted = sortSongs(songs, spec, playCounts)
     if (spec.group == GroupKey.NONE) return listOf("" to sorted)
-    return sorted.groupBy { groupLabel(it, spec.group) }
+    // Fold on case so inconsistent tag casing does not split one album or artist into two
+    // sections; the heading shows the spelling used by the most tracks in the group.
+    return sorted.groupBy { groupLabel(it, spec.group).lowercase() }
         .toList()
-        .sortedBy { it.first.lowercase() }
+        .sortedBy { it.first }
+        .map { (_, items) ->
+            val label = items.groupingBy { groupLabel(it, spec.group) }.eachCount().maxBy { it.value }.key
+            label to items
+        }
 }
 
 fun filterSongs(songs: List<Song>, query: String): List<Song> {

@@ -81,6 +81,14 @@ class SortingTest {
     }
 
     @Test
+    fun `grouping folds inconsistent tag casing into one section`() {
+        // "Ann" and "ann" are the same artist typed twice, not two artists.
+        val groups = groupSongs(songs, SortSpec(SortKey.TITLE, group = GroupKey.ARTIST))
+        assertEquals(2, groups.size)
+        assertEquals(2, groups.first { it.first.equals("ann", true) }.second.size)
+    }
+
+    @Test
     fun `grouping keeps every song exactly once`() {
         val groups = groupSongs(songs, SortSpec(SortKey.TITLE, group = GroupKey.ARTIST))
         assertEquals(songs.size, groups.sumOf { it.second.size })
