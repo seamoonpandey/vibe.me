@@ -172,10 +172,16 @@ private fun Root() {
     val user by vm.user.collectAsStateWithLifecycle()
     val playback by vm.playerState.collectAsStateWithLifecycle()
 
-    var granted by remember { mutableStateOf(false) }
     val permission = audioPermission()
-
     val context = LocalContext.current
+
+    // Seeded from the real permission state, not false. Starting at false composed the grant
+    // screen for one frame on every launch before the check could correct it.
+    var granted by remember {
+        mutableStateOf(
+            context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED,
+        )
+    }
     val audioLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { ok ->
@@ -187,10 +193,9 @@ private fun Root() {
     ) { }
 
     LaunchedEffect(Unit) {
-        val already = context.checkSelfPermission(permission) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (already) {
-            granted = true
+        if (granted) {
+            // MainActivity already began the read so the splash could wait on it; start() is
+            // idempotent, and this covers the case where it did not.
             vm.onPermissionGranted()
         } else {
             audioLauncher.launch(permission)
