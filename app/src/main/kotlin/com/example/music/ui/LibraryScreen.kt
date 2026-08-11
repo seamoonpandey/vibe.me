@@ -1,6 +1,8 @@
 package com.example.music.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -28,8 +31,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.music.data.Album
@@ -65,28 +67,29 @@ fun LibraryScreen(
     onOpenArtist: (Artist) -> Unit,
     onSortChange: (String, SortSpec) -> Unit,
     onSongMenu: (Song) -> Unit,
+    onShuffleAll: (List<Song>) -> Unit,
 ) {
     var tab by remember { mutableStateOf(LibTab.SONGS) }
     val spec = sortByTab[tab.name] ?: SortSpec()
 
     Column(Modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding())) {
-        PrimaryTabRow(
-            selectedTabIndex = tab.ordinal,
-            containerColor = Ink,
-            contentColor = LocalAccent.current,
+        // Pills, not an underlined tab row: they read as filters over one library rather than
+        // three separate places, which is what they actually are.
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             LibTab.entries.forEach { entry ->
-                Tab(
-                    selected = tab == entry,
-                    onClick = { tab = entry },
-                    selectedContentColor = LocalAccent.current,
-                    unselectedContentColor = TextLo,
-                    text = {
-                        Text(
-                            entry.name.lowercase().replaceFirstChar(Char::uppercase),
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    },
+                val selected = tab == entry
+                Text(
+                    entry.name.lowercase().replaceFirstChar(Char::uppercase),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) OnAccent else TextHi,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(if (selected) LocalAccent.current else Surface2)
+                        .clickable { tab = entry }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
         }
@@ -96,7 +99,13 @@ fun LibraryScreen(
             LibTab.ALBUMS -> state.albums.size
             LibTab.ARTISTS -> state.artists.size
         }
-        SortBar(spec, count, tab == LibTab.SONGS) { onSortSheetOpen(true) }
+        SortBar(
+            spec = spec,
+            count = count,
+            showGroup = tab == LibTab.SONGS,
+            onShuffle = { onShuffleAll(state.songs) },
+            onClick = { onSortSheetOpen(true) },
+        )
 
         val listPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding())
         when {
@@ -127,13 +136,19 @@ fun LibraryScreen(
  * has, so the current order is stated in words and is always one tap from being changed.
  */
 @Composable
-private fun SortBar(spec: SortSpec, count: Int, showGroup: Boolean, onClick: () -> Unit) {
+private fun SortBar(
+    spec: SortSpec,
+    count: Int,
+    showGroup: Boolean,
+    onShuffle: () -> Unit,
+    onClick: () -> Unit,
+) {
     Column {
         Row(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 11.dp),
+                .padding(horizontal = 16.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -156,6 +171,18 @@ private fun SortBar(spec: SortSpec, count: Int, showGroup: Boolean, onClick: () 
                 tint = TextLo,
             )
             Text("$count", style = Numeric, color = TextLo)
+            // Shuffle belongs next to the ordering, not buried in a menu: it is the other way
+            // people start a library this size.
+            Box(
+                Modifier
+                    .padding(start = 10.dp)
+                    .clip(CircleShape)
+                    .background(LocalAccent.current)
+                    .clickable(onClick = onShuffle)
+                    .padding(9.dp),
+            ) {
+                Icon(Icons.Default.Shuffle, "Shuffle everything", Modifier.size(17.dp), tint = OnAccent)
+            }
         }
         HorizontalDivider(color = Hairline)
     }
@@ -183,6 +210,7 @@ private fun SongsTab(
             }
             items(items, key = { it.id }, contentType = { "song" }) { song ->
                 SongRow(
+                    modifier = Modifier.animateItem(),
                     song = song,
                     playing = song.id == currentSongId,
                     onClick = { onPlay(flat, positions[song.id] ?: 0) },

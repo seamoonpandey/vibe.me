@@ -36,6 +36,12 @@ val OnAccent = Color(0xFFFFFBFA)
 
 val LocalAccent = staticCompositionLocalOf { DefaultAccent }
 
+/**
+ * The colour pulled from the current artwork. Scoped to the player on purpose: when this drove the
+ * whole app, one brown album cover turned every chip, tab and icon olive.
+ */
+val LocalArtAccent = staticCompositionLocalOf { DefaultAccent }
+
 private val scheme = lightColorScheme(
     background = Ink,
     onBackground = TextHi,
@@ -60,7 +66,7 @@ private val display = TextStyle(
 /** Durations, counts, years. Tabular by nature, so they get the tabular face. */
 val Numeric = TextStyle(
     fontFamily = FontFamily.Monospace,
-    fontSize = 12.sp,
+    fontSize = 13.sp,
     fontWeight = FontWeight.Medium,
     letterSpacing = 0.sp,
 )
@@ -69,21 +75,20 @@ private val typography = Typography(
     displaySmall = display.copy(fontSize = 32.sp, lineHeight = 36.sp),
     headlineMedium = display.copy(fontSize = 24.sp, lineHeight = 28.sp),
     headlineSmall = display.copy(fontSize = 19.sp, lineHeight = 23.sp, letterSpacing = (-0.5).sp),
-    titleMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 15.sp, lineHeight = 19.sp),
+    titleMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 21.sp),
     bodyMedium = TextStyle(fontSize = 13.5.sp, lineHeight = 17.sp),
-    bodySmall = TextStyle(fontSize = 12.5.sp, lineHeight = 16.sp),
+    bodySmall = TextStyle(fontSize = 13.5.sp, lineHeight = 17.sp),
     labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp, letterSpacing = 0.9.sp),
 )
 
 @Composable
-fun MusicTheme(accent: Color = DefaultAccent, content: @Composable () -> Unit) {
-    val animated by animateColorAsState(accent, tween(700), label = "accent")
-    CompositionLocalProvider(LocalAccent provides animated) {
-        MaterialTheme(
-            colorScheme = scheme.copy(primary = animated),
-            typography = typography,
-            content = content,
-        )
+fun MusicTheme(artAccent: Color = DefaultAccent, content: @Composable () -> Unit) {
+    val animated by animateColorAsState(artAccent, tween(700), label = "artAccent")
+    CompositionLocalProvider(
+        LocalAccent provides DefaultAccent,
+        LocalArtAccent provides animated,
+    ) {
+        MaterialTheme(colorScheme = scheme, typography = typography, content = content)
     }
 }
 

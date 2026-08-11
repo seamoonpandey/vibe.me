@@ -52,6 +52,17 @@ private fun stripBareNoise(s: String): String {
     return out
 }
 
+/**
+ * Filenames cannot contain some punctuation, so downloaders replace an apostrophe with the same
+ * underscore they use for spaces. Once underscores become spaces, "Don't" has already become
+ * "Don t". Rejoin the handful of English contraction tails, which is the whole of the damage.
+ */
+// Case is the discriminator: a lost apostrophe leaves a lowercase tail ("Don t"), whereas a real
+// one-letter word is capitalised ("Vitamin D", "Blues Brothers 2 B").
+private val CONTRACTION = Regex("""(?<=\p{L})\s+(t|s|ll|re|ve|m|d)(?![\p{L}\d])""")
+
+private fun repairContractions(s: String) = CONTRACTION.replace(s) { "'" + it.groupValues[1] }
+
 /** True once the string has at least one letter or digit; punctuation alone is not a name. */
 private fun String.hasSubstance() = any(Char::isLetterOrDigit)
 
@@ -78,6 +89,7 @@ private fun tidyString(raw: String, dropTrailingWords: Boolean = false): String 
         .let { EDGE_JUNK.replace(it, "") }
         .let { YEAR_TAIL.replace(it, "") }
         .let { if (dropTrailingWords) stripTrailingWordNoise(it) else it }
+        .let(::repairContractions)
         .trim()
 
 private fun String?.isUnknown() =
@@ -100,8 +112,8 @@ fun tidyNames(rawTitle: String, rawArtist: String?): Pair<String, String> {
 
     val split = Regex("""\s+[-–—]\s+""").find(cleanedTitle)
     if (split != null) {
-        val left = cleanedTitle.substring(0, split.range.first).trim()
-        val right = cleanedTitle.substring(split.range.last + 1).trim()
+        val left = EDGE_JUNK.replace(cleanedTitle.substring(0, split.range.first), "").trim()
+        val right = EDGE_JUNK.replace(cleanedTitle.substring(split.range.last + 1), "").trim()
         // A leading fragment that is really the whole name ("- Snowman") is not an artist.
         if (left.isNotEmpty() && right.isNotEmpty() && left.length <= 40) {
             return right to left

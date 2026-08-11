@@ -13,4 +13,15 @@
         <item name="android:windowBackground">@color/page</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
+
+    <!--
+      The window theme the system paints before the first frame. Without one, launching shows a
+      blank white slab; with it the app icon is on the app's own ground from the first millisecond.
+      Nothing is held back waiting for the library - the splash hands over as soon as Compose draws.
+    -->
+    <style name="Theme.Music.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/page</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Music</item>
+    </style>
 </resources>

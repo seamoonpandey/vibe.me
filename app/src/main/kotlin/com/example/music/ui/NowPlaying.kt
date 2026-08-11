@@ -144,7 +144,7 @@ fun NowPlayingScreen(
 ) {
     val song = state.current ?: return
     var showQueue by remember { mutableStateOf(false) }
-    val accent = LocalAccent.current
+    val accent = LocalArtAccent.current
 
     // Drag-to-dismiss: the screen follows the finger and springs back if the throw was too small.
     var dragY by remember { mutableFloatStateOf(0f) }

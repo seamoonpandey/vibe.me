@@ -113,3 +113,25 @@ class SmartListTest {
         assertEquals(listOf(2L, 1L), out.map { it.id })
     }
 }
+
+class ContractionTest {
+    @Test
+    fun `apostrophes lost to filename encoding are put back`() {
+        assertEquals("Don't Blame Me", tidyNames("Don_t_Blame_Me", "Taylor Swift").first)
+        assertEquals("It'll Be Okay", tidyNames("It_ll_Be_Okay", "Shawn Mendes").first)
+        assertEquals("If I Can't Have You", tidyNames("If_I_Can_t_Have_You", "Shawn Mendes").first)
+    }
+
+    @Test
+    fun `real single-letter words are not mangled into contractions`() {
+        // "A" and "I" are words; only a letter following another word gets an apostrophe.
+        assertEquals("Vitamin D", tidyNames("Vitamin D", "Someone").first)
+    }
+
+    @Test
+    fun `a dash left behind by the artist split is trimmed`() {
+        val (title, artist) = tidyNames("Ma_Timro_-_-_Swoopna_Suman", "<unknown>")
+        assertEquals("Swoopna Suman", title)
+        assertEquals("Ma Timro", artist)
+    }
+}

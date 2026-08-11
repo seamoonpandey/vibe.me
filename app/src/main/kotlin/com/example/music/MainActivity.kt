@@ -8,6 +8,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
@@ -16,6 +17,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -111,6 +113,8 @@ private val Screen.isTopLevel: Boolean
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Must precede super/setContentView so the system hands the splash over cleanly.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         // Cream ground needs dark system-bar icons; the default assumes a dark app.
         enableEdgeToEdge(
@@ -262,8 +266,7 @@ private fun AppScaffold(
                     title = {
                         Text(
                             title,
-                            style = if (screen.isTopLevel) MaterialTheme.typography.displaySmall
-                            else MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.headlineSmall,
                             color = TextHi,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -292,7 +295,9 @@ private fun AppScaffold(
             }
         },
         bottomBar = {
-            Column {
+            // Opaque: the mini player is an inset card, and without this the list scrolls
+            // visibly through the margin around it.
+            Column(Modifier.background(Ink)) {
                 MiniPlayer(
                     state = playback,
                     onExpand = { expanded = true },
@@ -330,6 +335,7 @@ private fun AppScaffold(
                     onOpenArtist = { screen = Screen.ArtistDetail(it) },
                     onSortChange = vm::setSort,
                     onSongMenu = { menuFor = it },
+                    onShuffleAll = { all -> if (all.isNotEmpty()) play(all.shuffled(), 0) },
                 )
 
                 Screen.Playlists -> PlaylistsScreen(
@@ -530,9 +536,10 @@ private fun androidx.compose.foundation.layout.RowScope.NavItem(
         icon = { Icon(icon, label, Modifier.size(21.dp)) },
         label = { Text(label, style = MaterialTheme.typography.labelLarge) },
         colors = NavigationBarItemDefaults.colors(
-            selectedIconColor = OnAccent,
+            selectedIconColor = LocalAccent.current,
             selectedTextColor = TextHi,
-            indicatorColor = LocalAccent.current,
+            // No pill: the accent icon is the selected state, which is quieter and denser.
+            indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
             unselectedIconColor = TextLo,
             unselectedTextColor = TextLo,
         ),

@@ -69,7 +69,7 @@ private fun GeneratedCover(seed: String) {
         Text(
             text = remember(seed) { initialsOf(seed) },
             color = OnCover.copy(alpha = 0.72f),
-            fontSize = 15.sp,
+            fontSize = 17.sp,
             style = MaterialTheme.typography.labelLarge,
         )
     }
@@ -89,11 +89,11 @@ fun SongRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, end = 4.dp, top = 7.dp, bottom = 7.dp),
+            .padding(start = 16.dp, end = 4.dp, top = 9.dp, bottom = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (index != null) {
-            Box(Modifier.width(30.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.width(34.dp), contentAlignment = Alignment.Center) {
                 if (playing) {
                     Icon(Icons.Default.GraphicEq, "Now playing", Modifier.size(16.dp), tint = accent)
                 } else {
@@ -101,10 +101,10 @@ fun SongRow(
                 }
             }
         } else {
-            Artwork(song.artUri, song.title, Modifier.size(46.dp), corner = 6)
+            Artwork(song.artUri, song.title, Modifier.size(56.dp), corner = 8)
         }
 
-        Column(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
+        Column(Modifier.weight(1f).padding(start = 13.dp, end = 8.dp)) {
             Text(
                 song.title,
                 style = MaterialTheme.typography.titleMedium,
@@ -124,8 +124,8 @@ fun SongRow(
         Text(formatDuration(song.durationMs), style = Numeric, color = TextLo)
 
         if (onMenu != null) {
-            IconButton(onMenu, Modifier.size(40.dp)) {
-                Icon(Icons.Default.MoreVert, "More options", Modifier.size(18.dp), tint = TextLo)
+            IconButton(onMenu, Modifier.size(44.dp)) {
+                Icon(Icons.Default.MoreVert, "More options", Modifier.size(20.dp), tint = TextLo)
             }
         } else {
             Box(Modifier.width(12.dp))
