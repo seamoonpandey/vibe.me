@@ -7,6 +7,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
@@ -26,6 +27,7 @@ import kotlinx.coroutines.launch
  * surviving the UI being swept away, the media notification, lockscreen and Bluetooth transport
  * controls, Android Auto — comes from being a MediaSessionService rather than a bound service.
  */
+@UnstableApi
 class PlaybackService : MediaSessionService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -49,6 +51,14 @@ class PlaybackService : MediaSessionService() {
 
         session = MediaSession.Builder(this, player)
             .setCallback(SessionCallback())
+            // Artwork for the shade and lockscreen, generated when the file has none embedded.
+            .setBitmapLoader(
+                CoverBitmapLoader(
+                    androidx.media3.session.CacheBitmapLoader(
+                        androidx.media3.datasource.DataSourceBitmapLoader(this),
+                    ),
+                ),
+            )
             .setCustomLayout(NotificationControls.layout(false, Player.REPEAT_MODE_OFF, false))
             .build()
 
