@@ -453,6 +453,8 @@ private fun AppScaffold(
             onQueueRemove = { vm.player.removeFromQueue(it) },
             onQueueMove = { from, to -> vm.player.moveInQueue(from, to) },
             onMenu = { menuFor = it },
+            speed = user.playbackSpeed,
+            onSpeedChange = { v -> vm.updateSettings { it.copy(playbackSpeed = v) } },
         )
     }
     }

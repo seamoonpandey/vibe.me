@@ -1,6 +1,12 @@
 package com.example.music.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -60,6 +66,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -141,6 +149,8 @@ fun NowPlayingScreen(
     onQueueRemove: (Int) -> Unit,
     onQueueMove: (Int, Int) -> Unit,
     onMenu: (Song) -> Unit,
+    speed: Float,
+    onSpeedChange: (Float) -> Unit,
 ) {
     val song = state.current ?: return
     var showQueue by remember { mutableStateOf(false) }
@@ -216,18 +226,16 @@ fun NowPlayingScreen(
         val progress = scrubbing
             ?: if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f
 
-        Slider(
-            value = progress.coerceIn(0f, 1f),
-            onValueChange = { scrubbing = it },
-            onValueChangeFinished = {
-                scrubbing?.let { onSeek((it * state.durationMs).toLong()) }
+        SeekBar(
+            progress = progress.coerceIn(0f, 1f),
+            accent = accent,
+            onScrub = { scrubbing = it },
+            onCommit = {
+                onSeek((it * state.durationMs).toLong())
                 scrubbing = null
             },
-            colors = SliderDefaults.colors(
-                thumbColor = accent, activeTrackColor = accent, inactiveTrackColor = Hairline,
-            ),
         )
-        Row(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
             Text(formatDuration((progress * state.durationMs).toLong()), style = Numeric, color = TextLo)
             Spacer(Modifier.weight(1f))
             Text(formatDuration(state.durationMs), style = Numeric, color = TextLo)
@@ -269,16 +277,25 @@ fun NowPlayingScreen(
         }
 
         Row(
-            Modifier.fillMaxWidth().clickable { showQueue = !showQueue }.padding(vertical = 14.dp),
-            horizontalArrangement = Arrangement.Center,
+            Modifier.fillMaxWidth().padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.AutoMirrored.Filled.QueueMusic, null, Modifier.size(17.dp), tint = TextLo)
-            Text(
-                if (showQueue) "  Hide queue" else "  Queue · ${state.queue.size}",
-                style = MaterialTheme.typography.labelLarge,
-                color = TextLo,
-            )
+            SpeedPill(speed, onSpeedChange)
+            Spacer(Modifier.weight(1f))
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .clickable { showQueue = !showQueue }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.AutoMirrored.Filled.QueueMusic, null, Modifier.size(17.dp), tint = TextLo)
+                Text(
+                    if (showQueue) "  Hide queue" else "  Queue · ${state.queue.size}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = TextLo,
+                )
+            }
         }
     }
 }
@@ -328,6 +345,76 @@ private fun ArtworkPager(state: PlayerUiState, modifier: Modifier, onQueueSelect
             )
         }
     }
+}
+
+/**
+ * Playback speed, as a pill that cycles rather than a slider or a menu.
+ *
+ * The useful speeds are a short list and people nudge between neighbours, so tapping through them
+ * beats opening something. It shows the current rate at all times, and the accent only appears
+ * when the speed is not 1x — so an accidental change is visible rather than silent.
+ */
+/**
+ * A thin line and a small thumb. The whole row is the touch target even though the bar is 4dp,
+ * so it is easy to hit without being visually heavy, and it can be tapped as well as dragged.
+ */
+@Composable
+private fun SeekBar(
+    progress: Float,
+    accent: Color,
+    onScrub: (Float) -> Unit,
+    onCommit: (Float) -> Unit,
+) {
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(28.dp)
+            .pointerInput(Unit) {
+                detectTapGestures { onCommit((it.x / size.width).coerceIn(0f, 1f)) }
+            }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = { onCommit(lastScrub) },
+                    onDragCancel = { onCommit(lastScrub) },
+                ) { change, _ ->
+                    lastScrub = (change.position.x / size.width).coerceIn(0f, 1f)
+                    onScrub(lastScrub)
+                    change.consume()
+                }
+            },
+    ) {
+        val track = 4.dp.toPx()
+        val y = size.height / 2f
+        val played = size.width * progress
+        drawLine(Hairline, Offset(0f, y), Offset(size.width, y), track, StrokeCap.Round)
+        if (played > 0f) {
+            drawLine(accent, Offset(0f, y), Offset(played, y), track, StrokeCap.Round)
+        }
+        drawCircle(accent, radius = 7.dp.toPx(), center = Offset(played, y))
+    }
+}
+
+/** Last position reported by a drag, so releasing can commit it. */
+private var lastScrub = 0f
+
+@Composable
+private fun SpeedPill(speed: Float, onSpeedChange: (Float) -> Unit) {
+    val steps = remember { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }
+    val altered = kotlin.math.abs(speed - 1f) > 0.01f
+    Text(
+        text = if (speed % 1f == 0f) "${speed.toInt()}x" else "${speed}x",
+        style = MaterialTheme.typography.labelLarge,
+        color = if (altered) OnAccent else TextLo,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (altered) LocalAccent.current else Surface2)
+            .clickable {
+                val next = steps[(steps.indexOfFirst { it >= speed - 0.01f }
+                    .takeIf { it >= 0 } ?: 2).plus(1) % steps.size]
+                onSpeedChange(next)
+            }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    )
 }
 
 @Composable
