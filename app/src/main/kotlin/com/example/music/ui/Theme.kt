@@ -96,6 +96,21 @@ fun paletteFor(choice: ThemeChoice): Palette = when (choice) {
     )
 }
 
+/**
+ * Each theme has its own dog. Same drawing, different coat and headphones, generated from one
+ * template so a change to the puppy lands in all seven at once.
+ */
+val ThemeChoice.mascot: Int
+    get() = when (this) {
+        ThemeChoice.ROSE -> com.example.music.R.drawable.mascot_rose
+        ThemeChoice.PURPLE -> com.example.music.R.drawable.mascot_purple
+        ThemeChoice.OCEAN -> com.example.music.R.drawable.mascot_ocean
+        ThemeChoice.FOREST -> com.example.music.R.drawable.mascot_forest
+        ThemeChoice.AMBER -> com.example.music.R.drawable.mascot_amber
+        ThemeChoice.MIDNIGHT -> com.example.music.R.drawable.mascot_midnight
+        ThemeChoice.CARBON -> com.example.music.R.drawable.mascot_carbon
+    }
+
 val LocalPalette = staticCompositionLocalOf { paletteFor(ThemeChoice.ROSE) }
 
 /** The colour pulled from the current artwork. Scoped to the player; see [MusicTheme]. */

@@ -52,6 +52,15 @@ fun SettingsScreen(
         }
         item {
             Section("Appearance") {
+                val current = runCatching { ThemeChoice.valueOf(state.theme) }
+                    .getOrDefault(ThemeChoice.ROSE)
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(current.mascot),
+                        contentDescription = "Mascot for the ${current.label} theme",
+                        modifier = Modifier.size(112.dp),
+                    )
+                }
                 ThemePicker(state.theme) { pick -> onChange { it.copy(theme = pick.name) } }
             }
         }
