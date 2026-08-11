@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -21,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,6 +49,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -184,16 +188,7 @@ fun NowPlayingScreen(
         if (showQueue) {
             QueueList(state, Modifier.weight(1f), onQueueSelect, onQueueRemove, onQueueMove)
         } else {
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                Artwork(
-                    song.artUri, song.title,
-                    Modifier
-                        .fillMaxWidth(0.92f)
-                        .aspectRatio(1f)
-                        .shadow(24.dp, RoundedCornerShape(18.dp), clip = false),
-                    corner = 18,
-                )
-            }
+            ArtworkPager(state, Modifier.weight(1f), onQueueSelect)
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 26.dp, bottom = 4.dp)) {
@@ -283,6 +278,53 @@ fun NowPlayingScreen(
                 if (showQueue) "  Hide queue" else "  Queue · ${state.queue.size}",
                 style = MaterialTheme.typography.labelLarge,
                 color = TextLo,
+            )
+        }
+    }
+}
+
+/**
+ * Swipe the artwork left or right to move through the queue.
+ *
+ * A pager rather than a swipe threshold, so the art actually tracks the finger and the fling
+ * physics are the platform's. The two effects below keep it in step with the player in both
+ * directions — the page follows a track change from the notification or a headset button, and
+ * settling on a new page tells the player to go there. Each guards on inequality, or they would
+ * chase each other forever.
+ */
+@Composable
+private fun ArtworkPager(state: PlayerUiState, modifier: Modifier, onQueueSelect: (Int) -> Unit) {
+    if (state.queue.isEmpty()) return
+    val pager = rememberPagerState(
+        initialPage = state.index.coerceIn(0, state.queue.lastIndex),
+        pageCount = { state.queue.size },
+    )
+
+    LaunchedEffect(state.index) {
+        if (state.index in state.queue.indices && pager.currentPage != state.index) {
+            pager.animateScrollToPage(state.index)
+        }
+    }
+    LaunchedEffect(pager.settledPage) {
+        if (pager.settledPage != state.index && pager.settledPage in state.queue.indices) {
+            onQueueSelect(pager.settledPage)
+        }
+    }
+
+    Box(modifier, contentAlignment = Alignment.Center) {
+        HorizontalPager(
+            state = pager,
+            pageSpacing = 16.dp,
+            contentPadding = PaddingValues(horizontal = 26.dp),
+        ) { page ->
+            val item = state.queue[page]
+            Artwork(
+                item.artUri, item.title,
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .shadow(24.dp, RoundedCornerShape(18.dp), clip = false),
+                corner = 18,
             )
         }
     }
