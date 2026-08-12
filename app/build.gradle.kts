@@ -1,15 +1,26 @@
+// Explicit: inside a build script `java` resolves to Gradle's own extension, not the package.
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+// Signing details live in local.properties, which is gitignored, and the keystore itself sits
+// outside the repo entirely. A checkout without them still builds — the release APK just comes out
+// unsigned, which is the right failure for someone building their own copy.
+val signing = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
+}
+val releaseKeystore = signing.getProperty("releaseStoreFile")?.let(::File)?.takeIf { it.exists() }
+
 android {
-    namespace = "com.example.music"
+    namespace = "me.vibe"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.music"
+        applicationId = "me.vibe"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
@@ -20,11 +31,23 @@ android {
         compose = true
     }
 
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = signing.getProperty("releaseStorePassword")
+                keyAlias = signing.getProperty("releaseKeyAlias")
+                keyPassword = signing.getProperty("releaseKeyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
