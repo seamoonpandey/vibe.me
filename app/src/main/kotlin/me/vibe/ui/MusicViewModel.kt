@@ -86,8 +86,9 @@ class MusicViewModel : ViewModel() {
     fun saveQueue() {
         val s = playerState.value
         if (s.queue.isEmpty()) return
+        val position = player.positionMs()
         viewModelScope.launch {
-            userData.saveQueue(s.queue.map { it.id }, s.index, s.positionMs, s.shuffle, s.repeatMode)
+            userData.saveQueue(s.queue.map { it.id }, s.index, position, s.shuffle, s.repeatMode)
         }
     }
 

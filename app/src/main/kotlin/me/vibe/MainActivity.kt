@@ -14,10 +14,21 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +58,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -70,6 +82,7 @@ import me.vibe.data.SmartList
 import me.vibe.data.Song
 import me.vibe.data.smartListSongs
 import me.vibe.data.Tags
+import me.vibe.playback.EXTRA_OPEN_PLAYER
 import me.vibe.ui.AddToPlaylistDialog
 import me.vibe.ui.Avatar
 import me.vibe.ui.NameDialog
@@ -124,7 +137,20 @@ private sealed interface Screen {
 private val Screen.isTopLevel: Boolean
     get() = this is Screen.Library || this is Screen.Playlists || this is Screen.Settings
 
+/** Which way a transition should travel. Search sits alongside the library rather than under it. */
+private val Screen.depth: Int
+    get() = if (isTopLevel) 0 else 1
+
 class MainActivity : ComponentActivity() {
+
+    /** Bumped by every intent asking for the player. A counter, so a second tap re-opens it. */
+    private var openPlayerRequest by mutableIntStateOf(0)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false)) openPlayerRequest++
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Must precede super/setContentView so the system hands the splash over cleanly.
@@ -156,7 +182,8 @@ class MainActivity : ComponentActivity() {
         // No startService here. Connecting the controller binds the service, and Media3 promotes
         // it to the foreground itself once audio actually starts — so it lives exactly as long as
         // there is playback or a UI, instead of sitting in memory with its timers running forever.
-        setContent { Root() }
+        if (intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false)) openPlayerRequest++
+        setContent { Root(openPlayerRequest) }
     }
 
     override fun onStop() {
@@ -164,15 +191,16 @@ class MainActivity : ComponentActivity() {
         // Cheapest moment to checkpoint the queue; the process may not get another one.
         val s = Deps.player.state.value
         if (s.queue.isNotEmpty()) {
+            val position = Deps.player.positionMs()
             Deps.scope.launch {
-                Deps.userData.saveQueue(s.queue.map { it.id }, s.index, s.positionMs, s.shuffle, s.repeatMode)
+                Deps.userData.saveQueue(s.queue.map { it.id }, s.index, position, s.shuffle, s.repeatMode)
             }
         }
     }
 }
 
 @Composable
-private fun Root() {
+private fun Root(openPlayerRequest: Int) {
     val vm: MusicViewModel = viewModel()
     val library by vm.libraryState.collectAsStateWithLifecycle()
     val user by vm.user.collectAsStateWithLifecycle()
@@ -213,8 +241,16 @@ private fun Root() {
     }
 
     var accent by remember { mutableStateOf<Color?>(null) }
+    var lastTheme by remember { mutableStateOf(user.theme) }
     val currentArt = playback.current?.artUri
     LaunchedEffect(currentArt, user.theme) {
+        // A theme change has to be visible on the next frame, not once a bitmap has been decoded.
+        // Dropping the old artwork colour first lets the new palette's own accent stand in for the
+        // millisecond or two it takes to refit the artwork one against the new ground.
+        if (user.theme != lastTheme) {
+            lastTheme = user.theme
+            accent = null
+        }
         val isDark = runCatching { paletteFor(ThemeChoice.valueOf(user.theme)).dark }.getOrDefault(false)
         accent = currentArt?.let { uri ->
             // Off the main thread, and at 64px. Palette walks every pixel, so doing it full size
@@ -248,7 +284,7 @@ private fun Root() {
         if (!granted) {
             PermissionGate { audioLauncher.launch(permission) }
         } else {
-            AppScaffold(vm, library, user, playback)
+            AppScaffold(vm, library, user, playback, openPlayerRequest)
         }
     }
 }
@@ -272,9 +308,16 @@ private fun AppScaffold(
     library: me.vibe.ui.LibraryState,
     user: me.vibe.data.UserState,
     playback: me.vibe.playback.PlayerUiState,
+    openPlayerRequest: Int,
 ) {
     var screen by remember { mutableStateOf<Screen>(Screen.Library) }
     var expanded by remember { mutableStateOf(false) }
+
+    // A notification tap lands here. Only honoured once the queue is actually loaded, or the
+    // player would open onto nothing during a cold start.
+    LaunchedEffect(openPlayerRequest, playback.current != null) {
+        if (openPlayerRequest > 0 && playback.current != null) expanded = true
+    }
     var addTo by remember { mutableStateOf<List<Long>?>(null) }
     var editing by remember { mutableStateOf<Song?>(null) }
     var menuFor by remember { mutableStateOf<Song?>(null) }
@@ -306,7 +349,19 @@ private fun AppScaffold(
 
     val songsById = remember(library.songs) { library.songs.associateBy { it.id } }
 
+    // Tapping the track that is already playing means "show me it", not "start it over". Restarting
+    // the thing you are listening to is the one outcome nobody was asking for.
+    //
+    // The current track is read from the player rather than from the `playback` parameter on
+    // purpose. This is handed to the list as `::play`, and a callable reference gets memoized with
+    // the composition that created it — so the captured `playback` stays at whatever it was on
+    // first composition, which is nothing playing at all, and the check never fires.
     fun play(songs: List<Song>, index: Int) {
+        val currentId = vm.player.state.value.current?.id
+        if (currentId != null && songs.getOrNull(index)?.id == currentId) {
+            expanded = true
+            return
+        }
         vm.player.play(songs, index)
         vm.saveQueue()
     }
@@ -390,12 +445,21 @@ private fun AppScaffold(
             // Opaque: the mini player is an inset card, and without this the list scrolls
             // visibly through the margin around it.
             Column(Modifier.background(Ink)) {
-                MiniPlayer(
-                    state = playback,
-                    onExpand = { expanded = true },
-                    onPlayPause = vm.player::playPause,
-                    onNext = { vm.player.next() },
-                )
+                // The first track of a session makes the bar appear: it should grow into place
+                // rather than shove the list up between two frames.
+                AnimatedVisibility(
+                    visible = playback.current != null,
+                    enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(200)),
+                    exit = shrinkVertically(tween(180)) + fadeOut(tween(120)),
+                ) {
+                    MiniPlayer(
+                        state = playback,
+                        progressFlow = vm.player.progress,
+                        onExpand = { expanded = true },
+                        onPlayPause = vm.player::playPause,
+                        onNext = { vm.player.next() },
+                    )
+                }
                 NavigationBar(containerColor = Surface1, tonalElevation = 0.dp) {
                     NavItem(screen is Screen.Library, Icons.Default.Home, "Home") {
                         screen = Screen.Library
@@ -420,13 +484,29 @@ private fun AppScaffold(
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize()) {
-            when (val s = screen) {
+        // Navigation reads as movement in a direction: going deeper slides in from the right,
+        // coming back slides the other way. A sixth of the width, not the whole width — the point
+        // is to say which way you went, not to make you wait for a screen to travel.
+        AnimatedContent(
+            targetState = screen,
+            transitionSpec = {
+                val forward = targetState.depth >= initialState.depth
+                val shift = { w: Int -> if (forward) w / 6 else -w / 6 }
+                (slideInHorizontally(tween(240), shift) + fadeIn(tween(180)))
+                    .togetherWith(
+                        slideOutHorizontally(tween(240)) { w -> -shift(w) } + fadeOut(tween(140)),
+                    )
+            },
+            modifier = Modifier.fillMaxSize(),
+            label = "screen",
+        ) { target ->
+            when (val s = target) {
                 Screen.Library -> LibraryScreen(
                     state = library,
                     sortByTab = user.sortBy,
                     playCounts = user.playCounts,
                     currentSongId = playback.current?.id,
+                    playbackActive = playback.isPlaying,
                     contentPadding = padding,
                     sortSheetOpen = sortSheet,
                     onSortSheetOpen = { sortSheet = it },
@@ -465,6 +545,7 @@ private fun AppScaffold(
                     songs = library.songs,
                     contentPadding = padding,
                     currentSongId = playback.current?.id,
+                    playbackActive = playback.isPlaying,
                     onBack = { screen = Screen.Library },
                     onPlay = ::play,
                     onSongMenu = { menuFor = it },
@@ -475,6 +556,7 @@ private fun AppScaffold(
                     songs = s.album.songs,
                     contentPadding = padding,
                     currentSongId = playback.current?.id,
+                    playbackActive = playback.isPlaying,
                     onPlay = { i -> play(s.album.songs, i) },
                     onShuffle = { play(s.album.songs.shuffled(), 0) },
                     onSongMenu = { song, _ -> menuFor = song },
@@ -485,6 +567,7 @@ private fun AppScaffold(
                     songs = s.artist.songs,
                     contentPadding = padding,
                     currentSongId = playback.current?.id,
+                    playbackActive = playback.isPlaying,
                     roundArt = true,
                     onPlay = { i -> play(s.artist.songs, i) },
                     onShuffle = { play(s.artist.songs.shuffled(), 0) },
@@ -499,6 +582,7 @@ private fun AppScaffold(
                         songs = songs,
                         contentPadding = padding,
                         currentSongId = playback.current?.id,
+                    playbackActive = playback.isPlaying,
                         emptyMessage = "Nothing here yet. Add tracks from the library.",
                         onPlay = { i -> play(songs, i) },
                         onShuffle = { play(songs.shuffled(), 0) },
@@ -515,6 +599,7 @@ private fun AppScaffold(
                         songs = songs,
                         contentPadding = padding,
                         currentSongId = playback.current?.id,
+                    playbackActive = playback.isPlaying,
                         emptyMessage = "Play a few tracks and they will show up here.",
                         onPlay = { i -> play(songs, i) },
                         onShuffle = { play(songs.shuffled(), 0) },
@@ -529,6 +614,7 @@ private fun AppScaffold(
                         songs = songs,
                         contentPadding = padding,
                         currentSongId = playback.current?.id,
+                    playbackActive = playback.isPlaying,
                         emptyMessage = "Tap the heart on any track to save it here.",
                         onPlay = { i -> play(songs, i) },
                         onShuffle = { play(songs.shuffled(), 0) },
@@ -536,18 +622,23 @@ private fun AppScaffold(
                     )
                 }
             }
-
         }
     }
 
     // Rendered outside the Scaffold so it covers the tab bar; a child could never do that.
+    // A spring on the way up so it arrives with some weight behind it, and a plain curve on the
+    // way down — dismissals should get out of the way rather than perform.
     AnimatedVisibility(
         visible = expanded,
-        enter = slideInVertically(animationSpec = tween(300)) { it },
-        exit = slideOutVertically(animationSpec = tween(260)) { it },
+        enter = slideInVertically(
+            spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow),
+        ) { it } + fadeIn(tween(140)),
+        exit = slideOutVertically(tween(220, easing = FastOutLinearInEasing)) { it } +
+            fadeOut(tween(160)),
     ) {
         NowPlayingScreen(
             state = playback,
+            progressFlow = vm.player.progress,
             isFavorite = playback.current?.id in user.favorites,
             onCollapse = { expanded = false },
             onPlayPause = vm.player::playPause,
@@ -557,7 +648,7 @@ private fun AppScaffold(
             onShuffle = vm::toggleShuffle,
             onRepeat = vm::cycleRepeat,
             onFavorite = { playback.current?.let { vm.toggleFavorite(it.id) } },
-            onQueueSelect = { vm.player.seekToIndex(it) },
+            onQueueSelect = { if (it != playback.index) vm.player.seekToIndex(it) },
             onQueueRemove = { vm.player.removeFromQueue(it) },
             onQueueMove = { from, to -> vm.player.moveInQueue(from, to) },
             onMenu = { menuFor = it },

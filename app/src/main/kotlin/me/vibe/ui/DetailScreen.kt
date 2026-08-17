@@ -42,6 +42,7 @@ fun DetailScreen(
     songs: List<Song>,
     contentPadding: PaddingValues,
     currentSongId: Long?,
+    playbackActive: Boolean,
     roundArt: Boolean = false,
     emptyMessage: String? = null,
     onPlay: (Int) -> Unit,
@@ -64,6 +65,7 @@ fun DetailScreen(
                 song = song,
                 index = i + 1,
                 playing = song.id == currentSongId,
+                animating = playbackActive,
                 onClick = { onPlay(i) },
                 onMenu = onSongMenu?.let { menu -> { menu(song, i) } },
             )

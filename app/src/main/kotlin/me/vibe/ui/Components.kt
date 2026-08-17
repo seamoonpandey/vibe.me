@@ -1,7 +1,22 @@
 package me.vibe.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +31,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -84,6 +98,52 @@ fun Artwork(
     }
 }
 
+/**
+ * Three bars, moving. The point is that "this is the track playing right now" should be legible
+ * from across the list without reading anything — a static glyph and a tinted title both need a
+ * second look, and motion does not. Each bar runs on its own period so they never line up into a
+ * pulse, and the whole thing stops when playback does, which is information in itself.
+ *
+ * Drawn in one Canvas off a single infinite transition: three animated floats and no recomposition,
+ * since the values are read in the draw scope.
+ */
+@Composable
+fun EqualizerBars(color: Color, modifier: Modifier = Modifier, animating: Boolean = true) {
+    // Paused draws a plain shape and starts no transition at all. Leaving one running to hold a
+    // constant value is an animation frame a second, forever, for something that is not moving.
+    if (!animating) {
+        Canvas(modifier) { bars(color) { 0.34f } }
+        return
+    }
+    val transition = rememberInfiniteTransition(label = "eq")
+    val heights = listOf(620, 900, 740).mapIndexed { i, period ->
+        transition.animateFloat(
+            initialValue = if (i % 2 == 0) 0.28f else 0.85f,
+            targetValue = if (i % 2 == 0) 1f else 0.22f,
+            animationSpec = infiniteRepeatable(
+                tween(period, easing = LinearEasing),
+                RepeatMode.Reverse,
+            ),
+            label = "bar$i",
+        )
+    }
+    Canvas(modifier) { bars(color) { i -> heights[i].value } }
+}
+
+private inline fun DrawScope.bars(color: Color, height: (Int) -> Float) {
+    val gap = size.width * 0.22f
+    val bar = (size.width - gap * 2f) / 3f
+    repeat(3) { i ->
+        val h = size.height * height(i)
+        drawRoundRect(
+            color = color,
+            topLeft = Offset((bar + gap) * i, size.height - h),
+            size = Size(bar, h),
+            cornerRadius = CornerRadius(bar / 2f),
+        )
+    }
+}
+
 @Composable
 fun SongRow(
     song: Song,
@@ -92,8 +152,10 @@ fun SongRow(
     playing: Boolean = false,
     index: Int? = null,
     onMenu: (() -> Unit)? = null,
+    animating: Boolean = true,
 ) {
     val accent = LocalAccent.current
+    val titleColor by animateColorAsState(if (playing) accent else TextHi, tween(220), label = "rowTitle")
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -104,20 +166,35 @@ fun SongRow(
         if (index != null) {
             Box(Modifier.width(30.dp), contentAlignment = Alignment.Center) {
                 if (playing) {
-                    Icon(Icons.Default.GraphicEq, "Now playing", Modifier.size(16.dp), tint = accent)
+                    EqualizerBars(accent, Modifier.size(14.dp), animating)
                 } else {
                     Text("$index", style = Numeric, color = TextLo)
                 }
             }
         } else {
-            Artwork(song.artUri, song.title, Modifier.size(48.dp), corner = 6)
+            Box(contentAlignment = Alignment.Center) {
+                Artwork(song.artUri, song.title, Modifier.size(48.dp), corner = 6)
+                // The list has no track numbers, so the marker goes on the artwork — scrimmed,
+                // because it has to stay readable over whatever the cover happens to be.
+                androidx.compose.animation.AnimatedVisibility(playing, enter = fadeIn(), exit = fadeOut()) {
+                    Box(
+                        Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        EqualizerBars(Color.White, Modifier.size(16.dp), animating)
+                    }
+                }
+            }
         }
 
         Column(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
             Text(
                 song.title,
                 style = MaterialTheme.typography.titleMedium,
-                color = if (playing) accent else TextHi,
+                color = titleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

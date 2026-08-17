@@ -1,6 +1,7 @@
 package me.vibe
 
 import android.app.Application
+import coil3.request.crossfade
 import me.vibe.data.MediaStoreLibrary
 import me.vibe.data.TagWriter
 import me.vibe.data.UserData
@@ -35,7 +36,11 @@ object Deps {
         userData = UserData(app, scope)
         library = MediaStoreLibrary(app, scope)
         tagWriter = TagWriter(app)
-        images = coil3.ImageLoader.Builder(app).build()
+        // Artwork fades in rather than popping. Coil skips the fade for memory-cache hits, so
+        // scrolling back over rows you have already seen stays instant.
+        images = coil3.ImageLoader.Builder(app)
+            .crossfade(180)
+            .build()
         player = PlayerController(app, scope) { song ->
             scope.launch { userData.bumpPlayCount(song.id) }
         }

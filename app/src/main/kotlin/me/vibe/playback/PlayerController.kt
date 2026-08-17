@@ -2,6 +2,7 @@ package me.vibe.playback
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.SystemClock
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -24,11 +25,34 @@ data class PlayerUiState(
     val queue: List<Song> = emptyList(),
     val index: Int = 0,
     val isPlaying: Boolean = false,
-    val positionMs: Long = 0,
     val durationMs: Long = 0,
     val shuffle: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
 )
+
+/**
+ * Playback position as an anchor plus the clock, rather than a number that has to be re-read.
+ *
+ * Polling the controller twice a second put a new [PlayerUiState] into the tree 2× a second, which
+ * recomposed the whole scaffold for a value only the seek bar cares about — and still drew the
+ * thumb in 500ms steps, which is exactly the imprecision you could see. An anchor changes only when
+ * playback genuinely jumps, so the UI can interpolate against the frame clock and be right to the
+ * millisecond in between.
+ */
+data class Progress(
+    val positionMs: Long = 0,
+    val durationMs: Long = 0,
+    val anchorRealtimeMs: Long = 0,
+    val playing: Boolean = false,
+    val speed: Float = 1f,
+) {
+    fun at(realtimeMs: Long): Long {
+        if (!playing) return positionMs
+        val elapsed = ((realtimeMs - anchorRealtimeMs) * speed).toLong()
+        val p = positionMs + elapsed
+        return if (durationMs > 0) p.coerceIn(0, durationMs) else p.coerceAtLeast(0)
+    }
+}
 
 /**
  * The UI's only view of playback. Connects a MediaController once and republishes it as state, so
@@ -44,6 +68,9 @@ class PlayerController(
 
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state
+
+    private val _progress = MutableStateFlow(Progress())
+    val progress: StateFlow<Progress> = _progress
 
     // The queue only changes when the timeline does. Position updates arrive twice a second, and
     // rebuilding 200-odd items each time was pure waste.
@@ -66,19 +93,22 @@ class PlayerController(
 
     private var connecting = false
 
-    // Position is not an event, so it has to be polled — but only while something is on screen to
-    // show it. collectAsStateWithLifecycle drops its subscription when the app goes to the
-    // background, so subscriptionCount falls to zero and this stops dead rather than waking the CPU
-    // twice a second behind a locked screen for the whole of an album. Started once, here, rather
-    // than in connect(): reconnecting would otherwise leave a second copy of it running.
+    // The anchor is re-taken on every player event, which covers every way the position can jump.
+    // Between those it only has to survive drift between the audio clock and elapsedRealtime, which
+    // over a track is well under a frame — so this beat is insurance, not the mechanism, and it runs
+    // at a fifth of a hertz instead of two. Only while somebody is watching: collectAsStateWithLifecycle
+    // drops its subscription in the background, so this stops dead rather than waking a dozing CPU.
     init {
         scope.launch {
-            combine(_state.subscriptionCount, _state) { watchers, s -> watchers > 0 && s.isPlaying }
+            combine(_progress.subscriptionCount, _progress) { watchers, p -> watchers > 0 && p.playing }
                 .distinctUntilChanged()
                 .collectLatest { ticking ->
+                    // Re-anchor first, then wait. Coming back from the background otherwise leaves
+                    // an anchor taken minutes ago, and interpolating from that puts the thumb at
+                    // the end of the track for as long as the delay lasts.
                     while (ticking) {
-                        delay(500)
-                        publish()
+                        publishProgress()
+                        delay(5000)
                     }
                 }
         }
@@ -126,12 +156,26 @@ class PlayerController(
             queue = queue,
             index = c.currentMediaItemIndex,
             isPlaying = c.isPlaying,
-            positionMs = c.currentPosition.coerceAtLeast(0),
             durationMs = c.duration.coerceAtLeast(0),
             shuffle = c.shuffleModeEnabled,
             repeatMode = c.repeatMode,
         )
+        publishProgress()
     }
+
+    private fun publishProgress() {
+        val c = controller ?: return
+        _progress.value = Progress(
+            positionMs = c.currentPosition.coerceAtLeast(0),
+            durationMs = c.duration.coerceAtLeast(0),
+            anchorRealtimeMs = SystemClock.elapsedRealtime(),
+            playing = c.isPlaying,
+            speed = c.playbackParameters.speed,
+        )
+    }
+
+    /** The live position, for checkpointing. Reading the controller beats trusting an interpolation. */
+    fun positionMs(): Long = controller?.currentPosition?.coerceAtLeast(0) ?: _progress.value.positionMs
 
     // --- commands ---
 
@@ -154,8 +198,17 @@ class PlayerController(
         if (c.currentPosition > 3000) c.seekTo(0) else c.seekToPreviousMediaItem()
     }
 
-    fun seekTo(ms: Long) = controller?.seekTo(ms)
-    fun seekToIndex(i: Int) = controller?.seekTo(i, 0)
+    // Re-anchor on the spot rather than waiting for the event to come back over the binder — a seek
+    // that takes a frame or two to show up under the thumb is the whole "imprecise" feeling.
+    fun seekTo(ms: Long) {
+        controller?.seekTo(ms.coerceAtLeast(0))
+        publishProgress()
+    }
+
+    fun seekToIndex(i: Int) {
+        controller?.seekTo(i, 0)
+        publishProgress()
+    }
 
     fun toggleShuffle() = controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled }
 

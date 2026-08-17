@@ -1,7 +1,7 @@
 package me.vibe.ui
 
 import android.graphics.Bitmap
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
@@ -9,9 +9,13 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -195,6 +199,15 @@ private val typography = Typography(
     labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 13.sp, letterSpacing = 0.1.sp),
 )
 
+/**
+ * Picking a theme has to land at once.
+ *
+ * Every other token swaps on the frame the choice changes, but the artwork accent used to crossfade
+ * over 700ms regardless of *why* it changed — so choosing a theme repainted the app instantly and
+ * then dragged one colour along behind it. That lag is the whole "it's like a transition" feeling.
+ * The fade belongs to a track change, where two pieces of artwork really are being blended; a theme
+ * change is a decision, and decisions snap.
+ */
 @Composable
 fun MusicTheme(
     choice: ThemeChoice = ThemeChoice.ROSE,
@@ -202,11 +215,21 @@ fun MusicTheme(
     content: @Composable () -> Unit,
 ) {
     val palette = paletteFor(choice)
-    val animatedArt by animateColorAsState(artAccent ?: palette.accent, tween(700), label = "art")
+    val target = artAccent ?: palette.accent
+    val art = remember { Animatable(target) }
+    var lastChoice by remember { mutableStateOf(choice) }
+    LaunchedEffect(choice, target) {
+        if (choice != lastChoice) {
+            lastChoice = choice
+            art.snapTo(target)
+        } else {
+            art.animateTo(target, tween(450))
+        }
+    }
     CompositionLocalProvider(
         LocalPalette provides palette,
         LocalAccentInternal provides palette.accent,
-        LocalArtAccent provides animatedArt,
+        LocalArtAccent provides art.value,
     ) {
         MaterialTheme(colorScheme = schemeFor(palette), typography = typography, content = content)
     }

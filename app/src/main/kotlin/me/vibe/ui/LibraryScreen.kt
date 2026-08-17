@@ -1,5 +1,7 @@
 package me.vibe.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,6 +63,7 @@ fun LibraryScreen(
     sortByTab: Map<String, SortSpec>,
     playCounts: Map<Long, Int>,
     currentSongId: Long?,
+    playbackActive: Boolean,
     contentPadding: PaddingValues,
     sortSheetOpen: Boolean,
     onSortSheetOpen: (Boolean) -> Unit,
@@ -81,15 +84,21 @@ fun LibraryScreen(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            val accent = LocalAccent.current
+            val idle = Surface2
             LibTab.entries.forEach { entry ->
                 val selected = tab == entry
+                // The pill fills rather than cutting to the accent, which is what made switching
+                // tabs read as a flicker on a list that redraws in the same frame.
+                val fill by animateColorAsState(if (selected) accent else idle, tween(200), label = "pill")
+                val label by animateColorAsState(if (selected) OnAccent else TextLo, tween(200), label = "pillText")
                 Text(
                     entry.name.lowercase().replaceFirstChar(Char::uppercase),
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (selected) OnAccent else TextLo,
+                    color = label,
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(if (selected) LocalAccent.current else Surface2)
+                        .background(fill)
                         .clickable { tab = entry }
                         .padding(horizontal = 15.dp, vertical = 7.dp),
                 )
@@ -119,7 +128,10 @@ fun LibraryScreen(
                 "Add music to your phone's storage and it will appear here.",
             )
             tab == LibTab.SONGS ->
-                SongsTab(state.songs, spec, playCounts, currentSongId, listPadding, onPlaySongs, onSongMenu)
+                SongsTab(
+                    state.songs, spec, playCounts, currentSongId, playbackActive,
+                    listPadding, onPlaySongs, onSongMenu,
+                )
             tab == LibTab.ALBUMS -> AlbumsTab(state.albums, listPadding, onOpenAlbum)
             else -> ArtistsTab(state.artists, listPadding, onOpenArtist)
         }
@@ -196,6 +208,7 @@ private fun SongsTab(
     spec: SortSpec,
     playCounts: Map<Long, Int>,
     currentSongId: Long?,
+    playbackActive: Boolean,
     contentPadding: PaddingValues,
     onPlay: (List<Song>, Int) -> Unit,
     onMenu: (Song) -> Unit,
@@ -224,6 +237,7 @@ private fun SongsTab(
                     modifier = Modifier.animateItem(),
                     song = song,
                     playing = song.id == currentSongId,
+                    animating = playbackActive,
                     onClick = { onPlay(flat, positions[song.id] ?: 0) },
                     onMenu = { onMenu(song) },
                 )

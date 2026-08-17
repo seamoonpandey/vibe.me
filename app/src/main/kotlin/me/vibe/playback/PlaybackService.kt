@@ -1,5 +1,6 @@
 package me.vibe.playback
 
+import android.app.PendingIntent
 import android.content.Intent
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -27,6 +28,9 @@ import kotlinx.coroutines.launch
  * surviving the UI being swept away, the media notification, lockscreen and Bluetooth transport
  * controls, Android Auto — comes from being a MediaSessionService rather than a bound service.
  */
+/** Set on the intent the media notification fires, so the activity knows to show the player. */
+const val EXTRA_OPEN_PLAYER = "me.vibe.OPEN_PLAYER"
+
 @UnstableApi
 class PlaybackService : MediaSessionService() {
 
@@ -56,6 +60,10 @@ class PlaybackService : MediaSessionService() {
 
         session = MediaSession.Builder(this, player)
             .setCallback(SessionCallback())
+            // Without this the notification, the lockscreen card and the Bluetooth "now playing"
+            // entry are all dead to the touch — they control playback but go nowhere. Tapping the
+            // body of any of them should land on the player, on the track it is showing.
+            .setSessionActivity(openPlayerIntent())
             // Artwork for the shade and lockscreen, generated when the file has none embedded.
             .setBitmapLoader(
                 CoverBitmapLoader(
@@ -90,6 +98,17 @@ class PlaybackService : MediaSessionService() {
             }
         }
     }
+
+    private fun openPlayerIntent(): PendingIntent = PendingIntent.getActivity(
+        this,
+        0,
+        Intent(this, me.vibe.MainActivity::class.java)
+            .setAction(Intent.ACTION_MAIN)
+            .addCategory(Intent.CATEGORY_LAUNCHER)
+            .putExtra(EXTRA_OPEN_PLAYER, true)
+            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
 
     /** Keep the shade's buttons showing the truth about shuffle, repeat and favorite. */
     private fun refreshLayout() {

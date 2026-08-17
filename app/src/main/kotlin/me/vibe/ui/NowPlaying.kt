@@ -1,15 +1,30 @@
 package me.vibe.ui
 
+import android.os.SystemClock
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.runtime.MutableLongState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -76,19 +91,75 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import kotlinx.coroutines.flow.StateFlow
 import me.vibe.data.Song
 import me.vibe.data.formatDuration
 import me.vibe.playback.PlayerUiState
+import me.vibe.playback.Progress
 import kotlin.math.roundToInt
+
+/**
+ * The playback position, advanced by the frame clock between anchors.
+ *
+ * The player hands out an anchor — a position and the moment it was true — instead of a number
+ * re-read on a timer. Interpolating that against the frame clock gives a value good to the
+ * millisecond and moving at the refresh rate, where the old half-second poll both stepped visibly
+ * and could be up to half a second stale under the finger. Read the result inside a draw lambda and
+ * nothing recomposes at all.
+ */
+@Composable
+fun rememberPosition(progress: Progress): MutableLongState {
+    val pos = remember { mutableLongStateOf(progress.at(SystemClock.elapsedRealtime())) }
+    LaunchedEffect(progress) {
+        pos.longValue = progress.at(SystemClock.elapsedRealtime())
+        while (progress.playing) {
+            withFrameMillis { pos.longValue = progress.at(SystemClock.elapsedRealtime()) }
+        }
+    }
+    return pos
+}
+
+/**
+ * Play and pause, crossfading and turning into one another rather than swapping between frames.
+ * It is the control people press most, so it is the one worth animating.
+ */
+@Composable
+private fun PlayGlyph(playing: Boolean, tint: Color, size: Dp = 24.dp) {
+    AnimatedContent(
+        targetState = playing,
+        transitionSpec = {
+            (fadeIn(tween(120)) + scaleIn(tween(160), initialScale = 0.72f))
+                .togetherWith(fadeOut(tween(90)) + scaleOut(tween(160), targetScale = 0.72f))
+        },
+        label = "playPause",
+    ) { isPlaying ->
+        Icon(
+            if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+            if (isPlaying) "Pause" else "Play",
+            Modifier.size(size),
+            tint = tint,
+        )
+    }
+}
 
 /**
  * The bar above the tab bar. A rounded floating card rather than a full-width strip, so the list
  * visibly continues underneath it and it reads as a control rather than a second toolbar.
  */
 @Composable
-fun MiniPlayer(state: PlayerUiState, onExpand: () -> Unit, onPlayPause: () -> Unit, onNext: () -> Unit) {
+fun MiniPlayer(
+    state: PlayerUiState,
+    progressFlow: StateFlow<Progress>,
+    onExpand: () -> Unit,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+) {
     val song = state.current ?: return
+    // Collected here rather than passed in, so a new position anchor never reaches the scaffold.
+    val progress by progressFlow.collectAsStateWithLifecycle()
+    val position = rememberPosition(progress)
     Column(
         Modifier
             .padding(horizontal = 8.dp, vertical = 6.dp)
@@ -111,20 +182,21 @@ fun MiniPlayer(state: PlayerUiState, onExpand: () -> Unit, onPlayPause: () -> Un
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onPlayPause) {
-                Icon(
-                    if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    if (state.isPlaying) "Pause" else "Play",
-                    tint = TextHi,
-                )
-            }
+            IconButton(onPlayPause) { PlayGlyph(state.isPlaying, TextHi) }
             IconButton(onNext) { Icon(Icons.Default.SkipNext, "Next", tint = TextHi) }
         }
+        // The lambda is read in the draw pass, so this line advances every frame without any of
+        // the surrounding UI recomposing.
         LinearProgressIndicator(
-            progress = { if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f },
+            progress = {
+                val d = progress.durationMs
+                if (d > 0) position.longValue.toFloat() / d else 0f
+            },
             modifier = Modifier.fillMaxWidth().height(2.dp),
             color = LocalAccent.current,
             trackColor = Hairline,
+            drawStopIndicator = {},
+            gapSize = 0.dp,
         )
     }
 }
@@ -139,6 +211,7 @@ fun MiniPlayer(state: PlayerUiState, onExpand: () -> Unit, onPlayPause: () -> Un
 @Composable
 fun NowPlayingScreen(
     state: PlayerUiState,
+    progressFlow: StateFlow<Progress>,
     isFavorite: Boolean,
     onCollapse: () -> Unit,
     onPlayPause: () -> Unit,
@@ -225,24 +298,36 @@ fun NowPlayingScreen(
             }
         }
 
-        // The thumb follows the finger while held, so it never fights the position poll.
-        var scrubbing by remember { mutableStateOf<Float?>(null) }
-        val progress = scrubbing
-            ?: if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f
+        // The thumb follows the finger while held, so it never fights the interpolated position.
+        // -1 rather than null: this is read once per frame in a draw lambda, and a boxed Float
+        // there is an allocation per frame for nothing.
+        var scrubbing by remember { mutableFloatStateOf(-1f) }
+        val progress by progressFlow.collectAsStateWithLifecycle()
+        val position = rememberPosition(progress)
+        val duration = progress.durationMs
+
+        // Deferred, so the bar redraws each frame without recomposing this screen.
+        val fraction = {
+            val s = scrubbing
+            if (s >= 0f) s
+            else if (duration > 0) (position.longValue.toFloat() / duration).coerceIn(0f, 1f)
+            else 0f
+        }
 
         SeekBar(
-            progress = progress.coerceIn(0f, 1f),
+            fraction = fraction,
             accent = accent,
+            scrubbing = scrubbing >= 0f,
             onScrub = { scrubbing = it },
             onCommit = {
-                onSeek((it * state.durationMs).toLong())
-                scrubbing = null
+                onSeek((it * duration).toLong())
+                scrubbing = -1f
             },
         )
         Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-            Text(formatDuration((progress * state.durationMs).toLong()), style = Numeric, color = TextLo)
+            ElapsedLabel { (fraction() * duration).toLong() }
             Spacer(Modifier.weight(1f))
-            Text(formatDuration(state.durationMs), style = Numeric, color = TextLo)
+            Text(formatDuration(duration), style = Numeric, color = TextLo)
         }
 
         Row(
@@ -256,16 +341,25 @@ fun NowPlayingScreen(
             IconButton(onPrevious) {
                 Icon(Icons.Default.SkipPrevious, "Previous", Modifier.size(38.dp), tint = TextHi)
             }
+            // Presses on the main transport button are felt, not just registered: it gives under
+            // the finger and springs back. No ripple — on a solid accent disc it only muddies it.
+            val interactions = remember { MutableInteractionSource() }
+            val pressed by interactions.collectIsPressedAsState()
+            val press by animateFloatAsState(
+                if (pressed) 0.90f else 1f,
+                spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+                label = "press",
+            )
             Box(
-                Modifier.size(70.dp).clip(CircleShape).background(accent).clickable(onClick = onPlayPause),
+                Modifier
+                    .size(70.dp)
+                    .graphicsLayer { scaleX = press; scaleY = press }
+                    .clip(CircleShape)
+                    .background(accent)
+                    .clickable(interactions, indication = null, onClick = onPlayPause),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    if (state.isPlaying) "Pause" else "Play",
-                    Modifier.size(34.dp),
-                    tint = OnAccent,
-                )
+                PlayGlyph(state.isPlaying, OnAccent, 34.dp)
             }
             IconButton(onNext) {
                 Icon(Icons.Default.SkipNext, "Next", Modifier.size(38.dp), tint = TextHi)
@@ -357,47 +451,83 @@ private fun ArtworkPager(state: PlayerUiState, modifier: Modifier, onQueueSelect
 /**
  * A thin line and a small thumb. The whole row is the touch target even though the bar is 4dp,
  * so it is easy to hit without being visually heavy, and it can be tapped as well as dragged.
+ *
+ * Precision comes from three things the old version got wrong. The drag now starts from the press,
+ * so the thumb goes exactly where the finger landed instead of jumping by the touch slop on first
+ * movement. Both gestures live in one `awaitPointerEventScope`, so a tap and a drag can no longer
+ * be recognised by two competing detectors and commit different values. And the position under the
+ * finger is measured against the drawn track — inset by the thumb radius at each end, since the
+ * thumb cannot centre itself outside the bar — so the number committed is the one shown.
  */
 @Composable
 private fun SeekBar(
-    progress: Float,
+    fraction: () -> Float,
     accent: Color,
+    scrubbing: Boolean,
     onScrub: (Float) -> Unit,
     onCommit: (Float) -> Unit,
 ) {
     // Read palette colours here: a Canvas draw lambda is not a composable scope.
     val track = Hairline
+    val thumbRadius by animateFloatAsState(if (scrubbing) 10f else 7f, label = "thumb")
+
     Canvas(
         Modifier
             .fillMaxWidth()
-            .height(28.dp)
+            .height(32.dp)
             .pointerInput(Unit) {
-                detectTapGestures { onCommit((it.x / size.width).coerceIn(0f, 1f)) }
-            }
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures(
-                    onDragEnd = { onCommit(lastScrub) },
-                    onDragCancel = { onCommit(lastScrub) },
-                ) { change, _ ->
-                    lastScrub = (change.position.x / size.width).coerceIn(0f, 1f)
-                    onScrub(lastScrub)
-                    change.consume()
+                val inset = 10.dp.toPx()
+                fun at(x: Float) =
+                    ((x - inset) / (size.width - inset * 2f).coerceAtLeast(1f)).coerceIn(0f, 1f)
+
+                awaitPointerEventScope {
+                    while (true) {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        // The press itself is a scrub. Everything downstream reads one value, so
+                        // a tap and a drag that ends where it started commit the same place.
+                        var value = at(down.position.x)
+                        onScrub(value)
+                        down.consume()
+                        var pointer = down.id
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == pointer } ?: break
+                            if (!change.pressed) break
+                            if (change.position != change.previousPosition) {
+                                value = at(change.position.x)
+                                onScrub(value)
+                            }
+                            change.consume()
+                            pointer = change.id
+                        }
+                        onCommit(value)
+                    }
                 }
             },
     ) {
         val thickness = 4.dp.toPx()
+        val inset = 10.dp.toPx()
         val y = size.height / 2f
-        val played = size.width * progress
-        drawLine(track, Offset(0f, y), Offset(size.width, y), thickness, StrokeCap.Round)
-        if (played > 0f) {
-            drawLine(accent, Offset(0f, y), Offset(played, y), thickness, StrokeCap.Round)
-        }
-        drawCircle(accent, radius = 7.dp.toPx(), center = Offset(played, y))
+        val span = size.width - inset * 2f
+        val played = inset + span * fraction().coerceIn(0f, 1f)
+        drawLine(track, Offset(inset, y), Offset(inset + span, y), thickness, StrokeCap.Round)
+        drawLine(accent, Offset(inset, y), Offset(played, y), thickness, StrokeCap.Round)
+        drawCircle(accent, radius = thumbRadius.dp.toPx(), center = Offset(played, y))
     }
 }
 
-/** Last position reported by a drag, so releasing can commit it. */
-private var lastScrub = 0f
+/**
+ * The elapsed time. Fed a lambda rather than a value, so the per-frame position only forces a
+ * recomposition when the second it rounds to actually changes — once a second, on one Text.
+ */
+@Composable
+private fun ElapsedLabel(millis: () -> Long) {
+    // rememberUpdatedState, not a bare capture: the lambda closes over the current duration, and a
+    // derived state remembered once would keep reading the duration of the previous track.
+    val latest by rememberUpdatedState(millis)
+    val seconds by remember { derivedStateOf { latest() / 1000 } }
+    Text(formatDuration(seconds * 1000), style = Numeric, color = TextLo)
+}
 
 @Composable
 private fun SpeedPill(speed: Float, onSpeedChange: (Float) -> Unit) {

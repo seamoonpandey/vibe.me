@@ -18,9 +18,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Music">
 
+        <!-- singleTask, so tapping the media notification returns to the running app and its
+             queue rather than stacking a second copy of it. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Music.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -34,6 +34,7 @@ fun SearchScreen(
     songs: List<Song>,
     contentPadding: PaddingValues,
     currentSongId: Long?,
+    playbackActive: Boolean,
     onBack: () -> Unit,
     onPlay: (List<Song>, Int) -> Unit,
     onSongMenu: (Song) -> Unit,
@@ -75,6 +76,7 @@ fun SearchScreen(
                     SongRow(
                         song = song,
                         playing = song.id == currentSongId,
+                        animating = playbackActive,
                         onClick = { onPlay(results, results.indexOf(song)) },
                         onMenu = { onSongMenu(song) },
                     )
