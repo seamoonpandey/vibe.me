@@ -10,7 +10,7 @@ I got tired of not having a simple music app without ads. So I built one.
 
 ## Download
 
-**[Download vibe.me 1.0 (APK, 3 MB)](https://github.com/seamoonpandey/vibe.me/releases/latest)**
+**[Download vibe.me 1.1 (APK, 3 MB)](https://github.com/seamoonpandey/vibe.me/releases/latest)**
 
 Android 7.0 or newer. Your phone will warn you about installing outside the Play Store — that
 warning is correct and you should read it, then allow it if you trust me. Or build it yourself
@@ -23,8 +23,13 @@ an event you have to recover from.
 
 **Your files probably have terrible names.** Mine do. Something like `Sia_-_Snowman(128k).mp3`
 with no artist tag at all. The app shows that as **Snowman** by *Sia* — underscores gone, bitrate
-suffix gone, `(Official Video)` gone, apostrophes that got mangled by some download tool put back,
-and the artist taken from the filename when the tag simply isn't there.
+suffix gone, apostrophes that got mangled by some download tool put back, and the artist taken
+from the filename when the tag simply isn't there.
+
+The video junk is matched by shape rather than from a list, because a real library outruns any
+list: `Official Video`, `Official HD Video`, `Official Lyrics Video`, `OFFICIAL VISUALIZER` and
+`Album Visualizer` are all the same thing wearing different clothes. A qualifier is required in
+front, so *Video Games* and *The Lazy Song* keep their names.
 
 Files without embedded artwork get a generated cover instead of a blank grey square. Same track,
 same colours, every time — so the list is something you can scan rather than a wall of nothing.
@@ -40,13 +45,23 @@ changed — because on a library of untagged downloads, sort order *is* the stru
 **It keeps playing.** Playback lives in a service, not in the screen, so it survives you leaving
 the app. Lockscreen, notification, headset buttons, Bluetooth, Android Auto — all of it works.
 Gapless is always on. The notification's shuffle, repeat and favourite buttons show the truth
-rather than a guess.
+rather than a guess, and tapping the card itself opens the player on the track it is showing.
+
+**The seek bar is exact.** Position isn't polled on a timer — the player hands out where playback
+was and the moment that was true, and the bar interpolates it against the frame clock. So it moves
+at the refresh rate instead of stepping twice a second, and it is right to the millisecond in
+between. Scrubbing starts on the press, not after your finger has travelled the touch slop, so the
+thumb is under your finger from the first frame and the position you release on is the one you saw.
+
+**Tapping the track that's already playing** opens the player at the spot you're at. It does not
+start the song over.
 
 **Also:** a queue you can reorder, a sleep timer, playback speed, skip silence, an equalizer with
 presets and bass boost, playlists, favourites. You can edit a track's tags and the change is
 written back into the file. Share a track, set it as a ringtone, delete it.
 
-**Seven themes**, five light and two dark, switching instantly. Each one has its own dog.
+**Seven themes**, five light and two dark. Switching is a hard cut on the next frame — no colour
+trailing along behind the rest of the page. Each one has its own dog.
 
 ## Building it yourself
 
@@ -93,8 +108,10 @@ is kept honest:
 
 - The service exists only while there is playback or a UI. It isn't started at launch and left
   resident.
-- Position polling stops entirely when nothing is on screen to display it — the progress bar is
-  the only reason to poll, and a locked screen has no progress bar.
+- Position isn't polled at all. It is an anchor the UI interpolates against the frame clock, so
+  there is nothing ticking; a slow beat re-anchors it, and only while something is on screen to
+  show it. That also means a position update no longer pushes new state through the whole screen
+  twice a second for a number one bar cares about.
 - The crossfade and sleep-timer timers idle at one tick every two seconds and only speed up when
   one of them is actually armed and audio is running.
 - The equalizer is touched when you move a knob, not every time a play count is written.

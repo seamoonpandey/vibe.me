@@ -10,22 +10,33 @@ package me.vibe.data
  */
 
 /**
- * Multi-word video junk. These are unambiguous, so they can be removed even unbracketed.
- * Longest first, or "official video" would eat the tail of "official music video".
+ * Video junk, as a shape rather than a list.
+ *
+ * The list this replaces had ten entries and a real library outruns any such list immediately:
+ * `Official HD Video`, `Official Lyrics Video`, `OFFICIAL VISUALIZER`, `Album Visualizer` all
+ * sailed straight through it. What every one of them actually is, is an optional `official`, an
+ * optional kind, and then the medium — so that is what gets matched.
+ *
+ * A qualifier is required. Without one this would eat the title of "Video Games" and "Song for
+ * Zula", which is a far worse failure than leaving a stray word behind.
  */
-private val PHRASE_NOISE = listOf(
-    "official music video", "official lyric video", "official lyrical video",
-    "official video", "official audio", "lyric video", "lyrical video",
-    "music video", "full video", "full song",
+private const val QUALIFIER = "official|music|lyric|lyrics|lyrical|album|full|studio|hd|hq|4k"
+private const val MEDIUM = "video|audio|visualizer|visualiser|song"
+
+private val VIDEO_NOISE = Regex(
+    """(?<![\p{L}\d])(?:official(?:\s+(?:$QUALIFIER))*|(?:$QUALIFIER))\s+(?:$MEDIUM)(?![\p{L}\d])""",
+    RegexOption.IGNORE_CASE,
 )
 
 /**
- * Single generic words. Only junk *inside brackets* — bare, they are ordinary names, and stripping
- * them turns "Official Secrets" into "Secrets" and the band "Audioslave" into a stump.
+ * Single generic words. Only junk *inside brackets* or trailing — bare and mid-title they are
+ * ordinary names, and stripping them turns "Official Secrets" into "Secrets" and the band
+ * "Audioslave" into a stump.
  */
-private val WORD_NOISE = listOf("official", "lyrics", "lyric", "audio", "remastered", "hq", "hd", "4k", "mv")
-
-private val NOISE = PHRASE_NOISE + WORD_NOISE
+private val WORD_NOISE = listOf(
+    "official", "lyrics", "lyric", "audio", "visualizer", "visualiser",
+    "remastered", "hq", "hd", "4k", "mv",
+)
 
 private val BITRATE = Regex("""[(\[]\s*\d{2,4}\s*k(bps)?\s*[)\]]""", RegexOption.IGNORE_CASE)
 private val BRACKETED = Regex("""[(\[]([^)\]]*)[)\]]""")
@@ -40,20 +51,12 @@ private val EDGE_JUNK = Regex("""^[\s\-–—_,.|·]+|[\s\-–—_,.|·]+$""")
  */
 private fun stripBracketedNoise(s: String) = BRACKETED.replace(s) { m ->
     val inner = m.groupValues[1].trim().lowercase().trim(' ', '-', '_', ',', '.')
-    if (inner.isEmpty() || NOISE.any { inner == it }) "" else m.value
+    // Nothing but noise left once the video phrases are taken out means the whole group was noise.
+    val remainder = VIDEO_NOISE.replace(inner, " ").trim()
+    if (inner.isEmpty() || WORD_NOISE.any { inner == it } || !remainder.hasSubstance()) "" else m.value
 }
 
-// Compiled once. Building these per call meant ten regex compilations per track, and on a
-// 227-track library that alone cost seconds of the library read.
-private val PHRASE_NOISE_RX = PHRASE_NOISE.map {
-    Regex("""(?<![\p{L}\d])${Regex.escape(it)}(?![\p{L}\d])""", RegexOption.IGNORE_CASE)
-}
-
-private fun stripBareNoise(s: String): String {
-    var out = s
-    for (rx in PHRASE_NOISE_RX) out = rx.replace(out, " ")
-    return out
-}
+private fun stripBareNoise(s: String): String = VIDEO_NOISE.replace(s, " ")
 
 /**
  * Filenames cannot contain some punctuation, so downloaders replace an apostrophe with the same

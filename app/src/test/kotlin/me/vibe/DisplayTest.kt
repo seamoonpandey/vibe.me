@@ -46,6 +46,24 @@ class DisplayTest {
     }
 
     @Test
+    fun `video noise is matched by shape, not by an enumerated list`() {
+        assertEquals("Muskuraye", title("Muskuraye__OFFICIAL_VISUALIZER_(128k)"))
+        assertEquals("Fulbari", title("Fulbari__Album_Visualizer_(128k)"))
+        assertEquals("Beautiful Girls", title("Sean_Kingston_-_Beautiful_Girls__Official_HD_Video_(128k)"))
+        assertEquals("MAYA", title("Ashutosh_KC_-_MAYA__Official_Lyrics_Video_(128k)"))
+        assertEquals("Attention", title("Charlie_Puth_-_Attention_[Official_Video](128k)"))
+        assertEquals("Sean Kingston", artist("Sean_Kingston_-_Beautiful_Girls__Official_HD_Video_(128k)"))
+    }
+
+    @Test
+    fun `a medium word needs a qualifier in front of it to count as noise`() {
+        // The whole reason the match is not just /video|audio|song/: these are the titles.
+        assertEquals("Video Games", title("Video_Games", "Lana Del Rey"))
+        assertEquals("The Lazy Song", title("Bruno_Mars_-_The_Lazy_Song__Official_Music_Video_(128k)"))
+        assertEquals("Bruno Mars", artist("Bruno_Mars_-_The_Lazy_Song__Official_Music_Video_(128k)"))
+    }
+
+    @Test
     fun `missing artist falls back to a readable label, not angle brackets`() {
         assertEquals("Unknown artist", artist("Recording 001", "<unknown>"))
         assertEquals("Unknown artist", artist("Recording 001", null))
