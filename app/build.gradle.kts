@@ -31,6 +31,15 @@ android {
         compose = true
     }
 
+    // NewPipeExtractor targets a Java 11 toolchain and reaches for java.time, which is API 26.
+    // minSdk is 24, so desugaring is not optional here — without it the extractor throws
+    // NoClassDefFoundError on 24 and 25 only, which is the kind of break that ships.
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
     signingConfigs {
         if (releaseKeystore != null) {
             create("release") {
@@ -79,6 +88,13 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.5.0")
     implementation("androidx.palette:palette-ktx:1.0.0")
     implementation("net.jthink:jaudiotagger:3.0.1")
+
+    // Pinned to an exact tag on purpose. A silent extractor bump is a silent change in how the app
+    // behaves against a hostile remote, and this is the one dependency that talks to one.
+    // GPL-3.0-or-later — linking it is why this app is GPLv3. See LICENSE.
+    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5")
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     testImplementation("junit:junit:4.13.2")
 }

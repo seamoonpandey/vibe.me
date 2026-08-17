@@ -19,12 +19,43 @@ data class Song(
     val path: String,
     val sizeBytes: Long = 0,
     val mime: String = "",
+    /** YouTube video id. Null — the overwhelming majority — means a local MediaStore file. */
+    val streamKey: String? = null,
+    /** Remote thumbnail, for tracks that have no album art row to point at. */
+    val artUrl: String? = null,
 ) {
-    val uri: Uri get() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+    val isRemote: Boolean get() = streamKey != null
+
+    /**
+     * A remote track is addressed by a placeholder, never by its real stream URL.
+     *
+     * Extracted URLs expire in about six hours and the queue is persisted across restarts, so a
+     * real URL in here would routinely be dead by the time it was reached. `RemoteResolver` swaps
+     * this for a live one at the moment the loader opens the stream.
+     */
+    val uri: Uri get() =
+        if (streamKey != null) "$REMOTE_SCHEME://yt/$streamKey".toUri()
+        else ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
 
     /** Legacy album-art endpoint. Works on every API level we support and needs no permission. */
-    val artUri: Uri get() = ContentUris.withAppendedId("content://media/external/audio/albumart".toUri(), albumId)
+    val artUri: Uri get() = artUrl?.toUri()
+        ?: ContentUris.withAppendedId("content://media/external/audio/albumart".toUri(), albumId)
 }
+
+const val REMOTE_SCHEME = "vibe"
+
+/**
+ * A stable local id for a track that has no MediaStore row.
+ *
+ * MediaStore `_ID` is always positive, so the negative half of the space is free and a remote
+ * track can never be mistaken for a local one. Stability matters more than collision-freedom here:
+ * favourites and play counts are persisted against this number, so a sequential registry — which
+ * would be collision-proof — would orphan every one of them on the next launch.
+ *
+ * ponytail: hash, not a table. ~65k distinct remote tracks before a 50% chance of one collision.
+ * If that ever matters, swap in a persisted videoId -> id map behind this same function.
+ */
+fun remoteId(videoId: String): Long = -((videoId.hashCode().toLong() and 0x7FFFFFFFL) + 1)
 
 private fun String.toUri(): Uri = Uri.parse(this)
 

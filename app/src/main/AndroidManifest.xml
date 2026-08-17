@@ -10,6 +10,15 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Explore only. Every other part of the app still touches nothing but local files. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Capped at 28: scoped storage takes over at 29, where the MediaStore insert needs no
+         permission at all. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
     <application
         android:name=".App"
         android:label="@string/app_name"
@@ -48,6 +57,14 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
             </intent-filter>
         </service>
+
+        <!-- Separate from PlaybackService on purpose: a download has to survive playback stopping,
+             and a foreground service that is sometimes about audio and sometimes about a file
+             transfer is two services wearing one name. -->
+        <service
+            android:name=".playback.DownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 

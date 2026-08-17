@@ -40,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -87,6 +88,7 @@ import me.vibe.ui.AddToPlaylistDialog
 import me.vibe.ui.Avatar
 import me.vibe.ui.NameDialog
 import me.vibe.ui.DetailScreen
+import me.vibe.ui.ExploreScreen
 import me.vibe.ui.Ink
 import me.vibe.ui.greetingFor
 import me.vibe.ui.promptFor
@@ -124,6 +126,7 @@ private fun audioPermission() =
 /** Screen graph. Eight destinations do not need a navigation library. */
 private sealed interface Screen {
     data object Library : Screen
+    data object Explore : Screen
     data object Playlists : Screen
     data object Settings : Screen
     data object Search : Screen
@@ -135,7 +138,8 @@ private sealed interface Screen {
 }
 
 private val Screen.isTopLevel: Boolean
-    get() = this is Screen.Library || this is Screen.Playlists || this is Screen.Settings
+    get() = this is Screen.Library || this is Screen.Explore ||
+        this is Screen.Playlists || this is Screen.Settings
 
 /** Which way a transition should travel. Search sits alongside the library rather than under it. */
 private val Screen.depth: Int
@@ -349,6 +353,22 @@ private fun AppScaffold(
 
     val songsById = remember(library.songs) { library.songs.associateBy { it.id } }
 
+    val explore by vm.explore.collectAsStateWithLifecycle()
+    val query by vm.queryText.collectAsStateWithLifecycle()
+    val downloadStates by Deps.downloads.states.collectAsStateWithLifecycle()
+
+    // Which search results the user already owns. Matched on the repaired names rather than on the
+    // file, because the whole point of running YouTube titles through the same cleaner is that a
+    // track ends up with the same name here as it has on disk.
+    val libraryKeys = remember(library.songs) {
+        library.songs.mapTo(mutableSetOf()) { "${it.artist}|${it.title}".lowercase() }
+    }
+    val ownedKeys = remember(explore.results, libraryKeys) {
+        explore.results
+            .filter { "${it.artist}|${it.title}".lowercase() in libraryKeys }
+            .mapNotNullTo(mutableSetOf()) { it.streamKey }
+    }
+
     // Tapping the track that is already playing means "show me it", not "start it over". Restarting
     // the thing you are listening to is the one outcome nobody was asking for.
     //
@@ -368,6 +388,7 @@ private fun AppScaffold(
 
     val title = when (val s = screen) {
         Screen.Library -> "Home"
+        Screen.Explore -> "Explore"
         Screen.Playlists -> "Playlists"
         Screen.Settings -> "Profile"
         Screen.Favorites -> "Favorites"
@@ -464,6 +485,9 @@ private fun AppScaffold(
                     NavItem(screen is Screen.Library, Icons.Default.Home, "Home") {
                         screen = Screen.Library
                     }
+                    NavItem(screen is Screen.Explore, Icons.Default.Explore, "Explore") {
+                        screen = Screen.Explore
+                    }
                     NavItem(
                         screen is Screen.Playlists || screen is Screen.PlaylistDetail ||
                             screen is Screen.Favorites || screen is Screen.Smart,
@@ -539,6 +563,20 @@ private fun AppScaffold(
                     onEditName = { editingName = true },
                     onPickPhoto = { photoPicker.launch(arrayOf("image/*")) },
                     onChange = vm::updateSettings,
+                )
+
+                Screen.Explore -> ExploreScreen(
+                    query = query,
+                    state = explore,
+                    downloads = downloadStates,
+                    ownedKeys = ownedKeys,
+                    contentPadding = padding,
+                    currentSongId = playback.current?.id,
+                    playbackActive = playback.isPlaying,
+                    onQueryChange = vm::setQuery,
+                    onRetry = vm::retrySearch,
+                    onPlay = ::play,
+                    onDownload = vm::download,
                 )
 
                 Screen.Search -> SearchScreen(

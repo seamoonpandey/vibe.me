@@ -52,10 +52,26 @@ class PlaybackService : MediaSessionService() {
             )
             // Pause instead of playing to the room when headphones are yanked out.
             .setHandleAudioBecomingNoisy(true)
-            // Hold a plain CPU wakelock only while actually playing, and let Media3 drop it the
-            // moment playback stops. Without it a dozing device starves the decode thread and the
-            // audio breaks up; a network flag is not wanted here, since every file is local.
-            .setWakeMode(C.WAKE_MODE_LOCAL)
+            // Hold a wakelock only while actually playing, and let Media3 drop it the moment
+            // playback stops. Without it a dozing device starves the decode thread and the audio
+            // breaks up.
+            //
+            // This used to be WAKE_MODE_LOCAL, on the grounds that every file was local. Explore
+            // ended that: a streamed track also needs the wifi lock, or a dozing device drops the
+            // radio mid-song and playback stalls with the screen off. The extra cost is a wifi lock
+            // held during playback, which only matters while something is playing anyway.
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            // Resolves vibe://yt/<id> placeholders to live stream URLs on the loader thread. Local
+            // files never enter the resolver; it hands anything that is not our scheme straight
+            // back.
+            .setMediaSourceFactory(
+                androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
+                    androidx.media3.datasource.ResolvingDataSource.Factory(
+                        androidx.media3.datasource.DefaultDataSource.Factory(this),
+                        RemoteResolver,
+                    ),
+                ),
+            )
             .build()
 
         session = MediaSession.Builder(this, player)

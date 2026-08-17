@@ -66,6 +66,16 @@ class PlayerController(
     private var controller: MediaController? = null
     private var songsById = emptyMap<Long, Song>()
 
+    /**
+     * Songs the player was handed that the library read does not know about — anything streamed,
+     * and anything arriving from outside a MediaStore query.
+     *
+     * Without this, [publish] drops them: it rebuilds the visible queue by looking every media id
+     * up in [songsById], so an unknown id yields a queue the track is missing from and a null
+     * `current`. The track plays while the mini player and the queue sheet show nothing.
+     */
+    private val handed = mutableMapOf<Long, Song>()
+
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state
 
@@ -87,7 +97,7 @@ class PlayerController(
 
         override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
             publish()
-            item?.mediaId?.toLongOrNull()?.let { id -> songsById[id]?.let(onSongStarted) }
+            item?.mediaId?.toLongOrNull()?.let { id -> lookup(id)?.let(onSongStarted) }
         }
     }
 
@@ -142,11 +152,19 @@ class PlayerController(
         connecting = false
     }
 
+    private fun lookup(id: Long): Song? = songsById[id] ?: handed[id]
+
+    /** Every entry point that puts songs into the player goes through here first. */
+    private fun remember(songs: List<Song>) {
+        songs.forEach { handed[it.id] = it }
+        queueDirty = true
+    }
+
     private fun publish() {
         val c = controller ?: return
         if (queueDirty || cachedQueue.size != c.mediaItemCount) {
             cachedQueue = (0 until c.mediaItemCount).mapNotNull { i ->
-                songsById[c.getMediaItemAt(i).mediaId.toLongOrNull() ?: -1L]
+                c.getMediaItemAt(i).mediaId.toLongOrNull()?.let(::lookup)
             }
             queueDirty = false
         }
@@ -181,6 +199,7 @@ class PlayerController(
 
     fun play(songs: List<Song>, startIndex: Int = 0, positionMs: Long = 0, autoPlay: Boolean = true) {
         val c = controller ?: return
+        remember(songs)
         c.setMediaItems(songs.map(::toItem), startIndex.coerceIn(0, maxOf(songs.lastIndex, 0)), positionMs)
         c.prepare()
         c.playWhenReady = autoPlay
@@ -226,10 +245,14 @@ class PlayerController(
         }
     }
 
-    fun addToQueue(songs: List<Song>) = controller?.addMediaItems(songs.map(::toItem))
+    fun addToQueue(songs: List<Song>) {
+        remember(songs)
+        controller?.addMediaItems(songs.map(::toItem))
+    }
 
     fun playNext(songs: List<Song>) {
         val c = controller ?: return
+        remember(songs)
         c.addMediaItems(c.currentMediaItemIndex + 1, songs.map(::toItem))
     }
 
