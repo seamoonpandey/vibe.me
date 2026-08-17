@@ -18,13 +18,15 @@ Measured breakdown of the 242 files:
 | Class | Count | Fix |
 |---|---:|---|
 | `Artist - Title (junk)` | 154 | Existing parser already handles it |
-| `Title \| Artist \| Label` (pipe, arrives as `___`) | ~50 | New parser rule |
+| Pipe-separated (arrives as `___`) | 91 | New rule, but only ~16 carry provable evidence |
 | Bare title, no artist present anywhere | ~18 | Manual lookup via CSV |
 | Not music (ringtones, `viber_message`, dance clips) | ~10 | Exclude from library |
 | Duplicate pairs (same track at two bitrates) | 5 pairs | Surface, let the user delete |
 
-The manual-lookup residue is ~30 files, not 242. Build order follows from that: parser first,
-CSV loop last, so the human only ever sees what no rule can crack.
+(Classes overlap: a pipe-separated file may also be one of the ~10 non-music ones.)
+
+The manual-lookup residue is ~75 files, not 242. Build order follows from that: parser first,
+CSV loop last, so the human only ever sees what no rule can prove.
 
 ## Goals
 
@@ -53,30 +55,50 @@ already gone.
 
 So segmentation must happen on the **raw** string, before any tidying.
 
-### The two shapes are inverted
+### Pipe order is not determinable from one filename
 
-- Dash: `Artist - Title` — artist LEFT, title RIGHT. Already implemented.
-- Pipe: `Title | Artist | Label` — title LEFT, artist SECOND.
+The dash shape is fixed: `Artist - Title`, artist left. The pipe shape is **not**. Both orders
+occur in the measured library:
 
-Confusing them swaps the fields on ~50 tracks. The rules are separate and must be tested
-against each other.
+- `Ugh, That Look Tho | Auric Veil | ...` — title first
+- `Passenger | Let Her Go (Official Video)` — artist first
+- `Badshah | Paani Paani | Official Lyrical Video | ...` — artist first
 
-### Rule
+A frequency heuristic (the more-repeated segment is the artist) was tested against all 91
+pipe-shaped files and **rejected**: 57 tied, and of the 34 it decided, it chose `Official Music
+Video`, `Official Lyrical Video`, `Arbitrary Originals` (a label) and `The Movement` (half a tour
+name) as artists. It worked only for `Auric Veil` and `Passenger`.
 
-In `tidyNames`, when the artist tag is unknown:
+A wrong artist is worse than an empty one. Empty is a visible to-do that the CSV export collects;
+wrong is invisible and permanent once written to disk.
 
-1. Split the raw title on a run of 3+ underscores, or a literal `|`, `｜`, or `•` with
-   optional surrounding underscores/spaces.
-2. If 2+ segments result, tidy each segment independently (`tidyString`, dropping trailing
-   word noise).
-3. Drop segments left without substance — `Official Lyrical Video` tidies to empty and is
-   not an artist.
-4. First surviving segment is the title, second is the artist. Ignore the third onward: it is
-   the label, the film, or a description.
-5. Apply the existing `length <= 40` plausibility guard to the artist segment.
-6. If fewer than 2 segments survive, fall through to the existing dash rule unchanged.
+### Rule — evidence only
 
-Dash rule wins when both could apply — it is the stronger signal and covers the larger set.
+Segment the raw title on a run of 3+ underscores, or a literal `|`, `｜`, `•` with optional
+surrounding underscores or spaces. Tidy each segment independently and drop those left without
+substance (`Official Lyrical Video` tidies to empty and is not an artist).
+
+With 2+ segments surviving, assign an artist **only** on strong evidence:
+
+1. A segment exactly matches (case-insensitively) an artist already derived by the dash rule
+   elsewhere in the library, or
+2. An identical segment value appears in 3 or more files whose sibling segments differ — an
+   artist recurs across a discography, a song title does not. This is what catches `Auric Veil`
+   without catching one-offs.
+
+The matching segment is the artist; the longest remaining segment is the title. If neither test
+passes, the title is the first surviving segment and **the artist is null** — the song goes to
+the CSV. Apply the existing `length <= 40` plausibility guard either way.
+
+The dash rule wins whenever it applies: it is positional and proven, and covers the larger set.
+
+Both tests are library-wide, so this cannot be a per-filename pure function alone. `deriveNames`
+stays pure and reports the segment candidates; a second pass over the assembled list resolves
+them against the library's artist set and segment counts. `MediaStoreLibrary` already does
+library-wide passes (`toAlbums`, `toArtists`), so this follows an established shape.
+
+Expected yield: ~170 of 242 files fully derived, ~75 to the CSV. Every field the parser fills is
+one it can prove.
 
 ### Tests
 
@@ -189,7 +211,7 @@ control system.
 
 ## Phase 4 — CSV round trip
 
-For the ~30 files no rule can crack.
+For the ~75 files no rule can prove.
 
 ### Export
 
@@ -208,7 +230,7 @@ Columns:
 Pre-filling matters: the LLM corrects rather than invents, and the user can see at a glance
 which rows the parser already got right.
 
-Default export scope is "only tracks still missing an artist" — the ~30. Exporting all 242 is
+Default export scope is "only tracks still missing an artist" — the ~75. Exporting all 242 is
 available but not the default.
 
 `action=hide` is how the ringtones and `viber_message.mp3` leave the library. It adds
