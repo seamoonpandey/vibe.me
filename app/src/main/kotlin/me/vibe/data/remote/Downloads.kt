@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import me.vibe.data.DOWNLOAD_FOLDER
 import me.vibe.data.Song
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -270,7 +271,7 @@ class Downloads(private val context: Context) {
             val pending = ContentValues().apply {
                 put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
                 put(MediaStore.Audio.Media.MIME_TYPE, storeMime(mime))
-                put(MediaStore.Audio.Media.RELATIVE_PATH, "${Environment.DIRECTORY_MUSIC}/vibe.me")
+                put(MediaStore.Audio.Media.RELATIVE_PATH, "${Environment.DIRECTORY_MUSIC}/$DOWNLOAD_FOLDER")
                 // Hidden from every other app until the bytes are all there, so nothing indexes a
                 // half-written file as music.
                 put(MediaStore.Audio.Media.IS_PENDING, 1)
@@ -296,7 +297,7 @@ class Downloads(private val context: Context) {
         } else {
             val dir = File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
-                "vibe.me",
+                DOWNLOAD_FOLDER,
             ).apply { mkdirs() }
             val target = File(dir, displayName)
             source.copyTo(target, overwrite = true)

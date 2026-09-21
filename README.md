@@ -2,24 +2,41 @@
 
 A music player for the songs already sitting on your phone.
 
-No account. No sign-in. No network permission at all — the app cannot phone home because it was
-never given the ability to. No ads, no "discover weekly", no upsell, nothing that wants your
-attention for its own reasons.
+No account. No sign-in. No ads, no "discover weekly", no upsell, nothing that wants your attention
+for its own reasons.
+
+The network is used for one thing: the Explore tab, where you can search YouTube, play a result
+immediately and save it to your phone. Nothing is uploaded, there is no telemetry, and no request
+goes anywhere but YouTube. If you never open Explore, the app makes no network calls at all.
 
 I got tired of not having a simple music app without ads. So I built one.
 
 ## Download
 
-**[Download vibe.me 1.1 (APK, 3 MB)](https://github.com/seamoonpandey/vibe.me/releases/latest)**
+**[Download vibe.me 1.2 (APK, 4 MB)](https://github.com/seamoonpandey/vibe.me/releases/latest)**
 
 Android 7.0 or newer. Your phone will warn you about installing outside the Play Store — that
 warning is correct and you should read it, then allow it if you trust me. Or build it yourself
 from source, which is the version of trust I would pick.
 
+Every release, with the notes that went with it, is in the [changelog](CHANGELOG.md).
+
 ## What it's like to use
 
 **It opens where you left it.** Same track, same spot in the queue, paused. Closing the app is not
 an event you have to recover from.
+
+**It can go and get music.** Explore searches YouTube's music vertical — so no vlogs, no reaction
+videos, none of the hour-long "mixes" — and the results are ordinary track rows. Tap one and it
+streams straight away, into the same queue as your own files: a downloaded track and a streamed one
+sit next to each other and you queue them the same way. Tap the arrow on a row and it saves into
+`Music/vibe.me` as a tagged file with the cover art embedded, and it is in your library before you
+have finished looking for it.
+
+**Downloads stay visible.** A Downloads tab holds both halves of the job: what is transferring,
+with a progress bar and a cancel, above everything that has already landed. The bottom half is read
+back from the files themselves rather than bookkept, so it cannot disagree with your library about
+whether something was saved. A finished download says so; a failed one says why and offers a retry.
 
 **Your files probably have terrible names.** Mine do. Something like `Sia_-_Snowman(128k).mp3`
 with no artist tag at all. The app shows that as **Snowman** by *Sia* — underscores gone, bitrate
@@ -74,7 +91,7 @@ Needs JDK 17+ and the Android SDK.
 ./gradlew installDebug        # onto a connected device
 ```
 
-`minSdk 24`, `compileSdk 37`. The release APK is about 3 MB.
+`minSdk 24`, `compileSdk 37`. The release APK is about 4 MB.
 
 Release signing is read from `local.properties`, which is not in this repository. Without it
 `assembleRelease` still works — the APK just comes out unsigned, which is the right outcome for
@@ -93,10 +110,14 @@ and settings — small enough to hold in memory, stored as a single serialized b
 injection is one `object` with four fields.
 
 ```
-data/       MediaStore queries, name cleanup, sorting, user state, tag writing
-playback/   MediaSessionService, controller, effects, notification controls
-ui/         Compose screens, theme palettes, components
+data/         MediaStore queries, name cleanup, sorting, user state, tag writing
+data/remote/  the only code that touches a network: extractor, downloads, thumbnails, tokens
+playback/     MediaSessionService, controller, effects, notification controls
+ui/           Compose screens, theme palettes, components
 ```
+
+Everything network-facing is behind `data/remote/`, and the downloader talks to `HttpURLConnection`
+directly — forty lines — rather than adding a second HTTP stack to an APK that only ever needs one.
 
 Sorting, grouping, search and the name cleanup are pure functions with no Android types in them,
 and they have unit tests that run on the JVM in about a second.
@@ -127,3 +148,17 @@ is kept honest:
 - Equalizer and bass boost depend on the device having the hardware, and are quietly unavailable
   where it doesn't.
 - Playlists can't be imported or exported as m3u yet.
+- **An interrupted download starts over.** There is no resume across the app being killed: the
+  partial file is discarded and the track is re-queued by hand. For 4 MB files, a range-request
+  journal costs more than it saves.
+- **Downloads run one at a time.** Two transfers on one phone share one radio and finish no sooner
+  than they would in sequence, so they are queued rather than raced.
+- **Explore breaks when YouTube changes.** Extraction is maintenance, not a feature: the fix is a
+  new build against a newer extractor, and an old APK keeps failing until it gets one.
+
+## Licence
+
+GPLv3, because the app links [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor),
+which is GPL-3.0-or-later — that makes vibe.me a derivative work and it ships under the same
+licence. The proof-of-origin token code in `data/remote/potoken/` is ported from NewPipe, and each
+of those files carries its attribution. See [LICENSE](LICENSE).

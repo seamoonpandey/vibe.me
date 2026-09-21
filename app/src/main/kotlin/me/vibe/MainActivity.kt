@@ -80,6 +80,7 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import me.vibe.data.Album
 import me.vibe.data.Artist
+import me.vibe.data.DOWNLOAD_FOLDER
 import me.vibe.data.SmartList
 import me.vibe.data.Song
 import me.vibe.data.remote.DownloadJob
@@ -127,9 +128,6 @@ import kotlinx.coroutines.withContext
 private fun audioPermission() =
     if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO
     else Manifest.permission.READ_EXTERNAL_STORAGE
-
-/** The folder Downloads writes into, and therefore the one the Downloads page reads back. */
-private const val DOWNLOAD_FOLDER = "vibe.me"
 
 /** Screen graph. Eight destinations do not need a navigation library. */
 private sealed interface Screen {

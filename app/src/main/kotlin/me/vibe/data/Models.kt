@@ -37,10 +37,39 @@ data class Song(
         if (streamKey != null) "$REMOTE_SCHEME://yt/$streamKey".toUri()
         else ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
 
-    /** Legacy album-art endpoint. Works on every API level we support and needs no permission. */
-    val artUri: Uri get() = artUrl?.toUri()
-        ?: ContentUris.withAppendedId("content://media/external/audio/albumart".toUri(), albumId)
+    /**
+     * The cover for this track, whichever of the three sources has one.
+     *
+     * Remote tracks carry the URL they were found at. Files this app downloaded are addressed
+     * per-file, and everything else goes through the album-art endpoint, which is the one that
+     * works on every API level without a permission.
+     *
+     * The per-file branch is not a preference, it is a fix. Android derives an album from the
+     * folder, so every download landing in `Music/vibe.me` shares one album id and therefore one
+     * `albumart/<albumId>` URI. Media3 keys its artwork cache by that URI, so the lockscreen and the
+     * media notification showed whichever downloaded track MediaStore indexed last — for every
+     * track that played. `media/<id>/albumart` is scoped to the file, and the file is where the
+     * cover we embedded actually lives.
+     */
+    val artUri: Uri get() = artUriFor(id, albumId, artUrl, folder).toUri()
 }
+
+/**
+ * Which cover a track should show, as a plain string so the choice can be tested on the JVM.
+ *
+ * Building the [Uri] here instead would make this untestable — `android.net.Uri` is a stub outside a
+ * device — and this decision is exactly the kind that regresses quietly.
+ */
+internal fun artUriFor(id: Long, albumId: Long, artUrl: String?, folder: String): String = when {
+    artUrl != null -> artUrl
+    // Per-file, because everything the app downloads shares one folder and therefore one album id,
+    // and therefore one album-art URI — which is the whole bug. See [Song.artUri].
+    folder == DOWNLOAD_FOLDER -> "content://media/external/audio/media/$id/albumart"
+    else -> "content://media/external/audio/albumart/$albumId"
+}
+
+/** Where every in-app download lands, and therefore how a downloaded track is recognised again. */
+const val DOWNLOAD_FOLDER = "vibe.me"
 
 const val REMOTE_SCHEME = "vibe"
 
