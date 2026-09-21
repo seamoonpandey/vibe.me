@@ -64,8 +64,10 @@ class MusicViewModel : ViewModel() {
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.Eagerly, LibraryState())
 
-    val user: StateFlow<UserState> =
-        userData.state.stateIn(viewModelScope, SharingStarted.Eagerly, UserState())
+    // Read straight off the warmed source rather than re-derived here: the splash lifts on
+    // UserData.loaded, which is set after this value, so the first frame the user sees already
+    // carries the saved theme.
+    val user: StateFlow<UserState> = userData.user
 
     val playerState = player.state
 

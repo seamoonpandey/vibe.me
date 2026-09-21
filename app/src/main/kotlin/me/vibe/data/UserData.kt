@@ -8,6 +8,10 @@ import androidx.datastore.core.Serializer
 import androidx.datastore.dataStoreFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import java.io.InputStream
@@ -71,7 +75,24 @@ class UserData(context: Context, scope: CoroutineScope) {
         produceFile = { context.dataStoreFile("user.json") },
     )
 
+    /**
+     * The settings, held on the instance from the first read so the theme can be applied behind the
+     * splash instead of painting the ROSE placeholder and flipping a frame after it lifts. [loaded]
+     * is set only after [user] carries the real value, and in the same step, so anything waiting on
+     * [loaded] — the splash does — sees the correct theme with no frame in between. The read is
+     * started at construction, in the Application, which is why it is warm before the first frame.
+     */
+    private val _user = MutableStateFlow(UserState())
+    val user: StateFlow<UserState> = _user.asStateFlow()
+
+    private val _loaded = MutableStateFlow(false)
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+
     val state: Flow<UserState> = store.data
+
+    init {
+        scope.launch { store.data.collect { _user.value = it; _loaded.value = true } }
+    }
 
     suspend fun edit(block: (UserState) -> UserState) {
         store.updateData(block)

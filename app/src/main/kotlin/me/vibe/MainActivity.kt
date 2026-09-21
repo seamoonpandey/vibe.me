@@ -173,12 +173,17 @@ class MainActivity : ComponentActivity() {
         val granted = checkSelfPermission(audioPermission()) == PackageManager.PERMISSION_GRANTED
         if (granted) Deps.library.start()
 
-        // Hold until the library is actually in hand, so nothing loads on the main screen. Bounded
-        // two ways, because a splash that never lifts is worse than what it replaced: only when a
-        // read is genuinely under way, and never past a few seconds.
+        // Hold until the theme is known, so the first frame ever shown already wears the saved
+        // colours rather than the ROSE placeholder it would otherwise flip away from once DataStore
+        // lands. The user read is started in the Application, so this usually adds no wait at all.
+        // When permission was already granted the library is waited on too, as before. Bounded by a
+        // few seconds because a splash that never lifts is worse than the flicker it hides.
         val startedAt = System.currentTimeMillis()
         splash.setKeepOnScreenCondition {
-            granted && !Deps.library.loaded.value && System.currentTimeMillis() - startedAt < 8000
+            if (System.currentTimeMillis() - startedAt > 8000) return@setKeepOnScreenCondition false
+            val themeReady = Deps.userData.loaded.value
+            val libraryReady = !granted || Deps.library.loaded.value
+            !(themeReady && libraryReady)
         }
         super.onCreate(savedInstanceState)
         // Cream ground needs dark system-bar icons; the default assumes a dark app.
