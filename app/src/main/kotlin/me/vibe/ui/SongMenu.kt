@@ -7,19 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -34,6 +21,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.vibe.data.Song
 import me.vibe.data.formatDuration
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
+import com.adamglin.phosphoricons.FillGroup as Phf
+import com.adamglin.phosphoricons.fill.*
 
 /** Everything you can do to one track, in the order you are most likely to want it. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,23 +71,23 @@ fun SongMenuSheet(
             }
             HorizontalDivider(color = Hairline)
 
-            Item(Icons.Default.PlayArrow, "Play next", onPlayNext, onDismiss)
-            Item(Icons.AutoMirrored.Filled.QueueMusic, "Add to queue", onAddToQueue, onDismiss)
-            Item(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist", onAddToPlaylist, onDismiss)
+            Item(Ph.Play, "Play next", onPlayNext, onDismiss)
+            Item(Ph.Playlist, "Add to queue", onAddToQueue, onDismiss)
+            Item(Ph.MusicNotesPlus, "Add to playlist", onAddToPlaylist, onDismiss)
             Item(
-                if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                if (isFavorite) Phf.Heart else Ph.Heart,
                 if (isFavorite) "Remove from favorites" else "Add to favorites",
                 onToggleFavorite, onDismiss,
             )
             HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 6.dp))
-            Item(Icons.Default.Album, "Go to album", onGoToAlbum, onDismiss)
-            Item(Icons.Default.Person, "Go to artist", onGoToArtist, onDismiss)
-            Item(Icons.Default.Tune, "Edit track details", onEditTags, onDismiss)
+            Item(Ph.VinylRecord, "Go to album", onGoToAlbum, onDismiss)
+            Item(Ph.User, "Go to artist", onGoToArtist, onDismiss)
+            Item(Ph.SlidersHorizontal, "Edit track details", onEditTags, onDismiss)
             HorizontalDivider(color = Hairline, modifier = Modifier.padding(vertical = 6.dp))
-            Item(Icons.Default.Share, "Share", onShare, onDismiss)
-            Item(Icons.Default.Notifications, "Set as ringtone", onRingtone, onDismiss)
-            Item(Icons.Default.Info, "Details", onInfo, onDismiss)
-            Item(Icons.Default.DeleteOutline, "Delete from device", onDelete, onDismiss)
+            Item(Ph.ShareNetwork, "Share", onShare, onDismiss)
+            Item(Ph.Bell, "Set as ringtone", onRingtone, onDismiss)
+            Item(Ph.Info, "Details", onInfo, onDismiss)
+            Item(Ph.TrashSimple, "Delete from device", onDelete, onDismiss)
         }
     }
 }

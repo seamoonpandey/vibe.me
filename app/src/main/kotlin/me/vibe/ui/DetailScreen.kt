@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -30,6 +27,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.vibe.data.Song
 import me.vibe.data.formatDuration
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
 
 /**
  * One screen for albums, artists, playlists and favorites. All four are a header plus an ordered
@@ -107,11 +106,11 @@ private fun DetailHeader(
                 onClick = { onPlay(0) },
                 colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = OnAccent),
             ) {
-                Icon(Icons.Default.PlayArrow, null, Modifier.size(19.dp))
+                Icon(Ph.Play, null, Modifier.size(19.dp))
                 Text("Play", Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelLarge)
             }
             OutlinedButton(onClick = onShuffle) {
-                Icon(Icons.Default.Shuffle, null, Modifier.size(17.dp), tint = TextHi)
+                Icon(Ph.Shuffle, null, Modifier.size(17.dp), tint = TextHi)
                 Text("Shuffle", Modifier.padding(start = 6.dp), color = TextHi, style = MaterialTheme.typography.labelLarge)
             }
         }

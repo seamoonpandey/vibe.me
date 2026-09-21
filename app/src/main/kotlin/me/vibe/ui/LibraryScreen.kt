@@ -23,11 +23,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -56,6 +51,8 @@ import me.vibe.data.SortSpec
 import me.vibe.data.Tab as LibTab
 import me.vibe.data.defaultDescending
 import me.vibe.data.groupSongs
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
 
 @Composable
 fun LibraryScreen(
@@ -182,7 +179,7 @@ private fun SortBar(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Icon(
-                    if (spec.descending) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                    if (spec.descending) Ph.ArrowDown else Ph.ArrowUp,
                     if (spec.descending) "Descending" else "Ascending",
                     Modifier.size(14.dp).padding(start = 2.dp),
                     tint = TextLo,
@@ -196,7 +193,7 @@ private fun SortBar(
                     .clickable(onClick = onShuffle)
                     .padding(10.dp),
             ) {
-                Icon(Icons.Default.Shuffle, "Shuffle everything", Modifier.size(18.dp), tint = OnAccent)
+                Icon(Ph.Shuffle, "Shuffle everything", Modifier.size(18.dp), tint = OnAccent)
             }
         }
     }

@@ -11,10 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import me.vibe.data.Song
 import me.vibe.data.remote.DownloadJob
 import me.vibe.data.remote.DownloadState
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
 
 /**
  * Search YouTube, play a result, keep a result.
@@ -122,7 +120,7 @@ private fun DownloadButton(state: DownloadState?, owned: Boolean, onClick: () ->
     Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
         when {
             owned || state is DownloadState.Done ->
-                Icon(Icons.Default.Check, "Already saved", tint = accent, modifier = Modifier.size(20.dp))
+                Icon(Ph.Check, "Already saved", tint = accent, modifier = Modifier.size(20.dp))
 
             state is DownloadState.Queued ->
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = TextLo)
@@ -137,11 +135,11 @@ private fun DownloadButton(state: DownloadState?, owned: Boolean, onClick: () ->
                 )
 
             state is DownloadState.Failed -> IconButton(onClick) {
-                Icon(Icons.Default.Refresh, "Retry download", tint = TextLo, modifier = Modifier.size(20.dp))
+                Icon(Ph.ArrowsClockwise, "Retry download", tint = TextLo, modifier = Modifier.size(20.dp))
             }
 
             else -> IconButton(onClick) {
-                Icon(Icons.Default.Download, "Download", tint = TextLo, modifier = Modifier.size(20.dp))
+                Icon(Ph.Download, "Download", tint = TextLo, modifier = Modifier.size(20.dp))
             }
         }
     }

@@ -50,21 +50,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -99,6 +84,10 @@ import me.vibe.data.formatDuration
 import me.vibe.playback.PlayerUiState
 import me.vibe.playback.Progress
 import kotlin.math.roundToInt
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
+import com.adamglin.phosphoricons.FillGroup as Phf
+import com.adamglin.phosphoricons.fill.*
 
 /**
  * The playback position, advanced by the frame clock between anchors.
@@ -136,7 +125,7 @@ private fun PlayGlyph(playing: Boolean, tint: Color, size: Dp = 24.dp) {
         label = "playPause",
     ) { isPlaying ->
         Icon(
-            if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+            if (isPlaying) Ph.Pause else Ph.Play,
             if (isPlaying) "Pause" else "Play",
             Modifier.size(size),
             tint = tint,
@@ -183,7 +172,7 @@ fun MiniPlayer(
                 )
             }
             IconButton(onPlayPause) { PlayGlyph(state.isPlaying, TextHi) }
-            IconButton(onNext) { Icon(Icons.Default.SkipNext, "Next", tint = TextHi) }
+            IconButton(onNext) { Icon(Ph.SkipForward, "Next", tint = TextHi) }
         }
         // The lambda is read in the draw pass, so this line advances every frame without any of
         // the surrounding UI recomposing.
@@ -257,7 +246,7 @@ fun NowPlayingScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onCollapse) {
-                Icon(Icons.Default.KeyboardArrowDown, "Close player", Modifier.size(30.dp), tint = TextHi)
+                Icon(Ph.CaretDown, "Close player", Modifier.size(30.dp), tint = TextHi)
             }
             Text(
                 "NOW PLAYING",
@@ -267,7 +256,7 @@ fun NowPlayingScreen(
                 modifier = Modifier.weight(1f),
             )
             IconButton({ onMenu(song) }) {
-                Icon(Icons.Default.MoreVert, "Track options", tint = TextHi)
+                Icon(Ph.DotsThreeVertical, "Track options", tint = TextHi)
             }
         }
 
@@ -290,8 +279,8 @@ fun NowPlayingScreen(
             }
             IconButton(onRepeat) {
                 Icon(
-                    if (state.repeatMode == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne
-                    else Icons.Default.Repeat,
+                    if (state.repeatMode == Player.REPEAT_MODE_ONE) Ph.RepeatOnce
+                    else Ph.Repeat,
                     "Repeat",
                     tint = if (state.repeatMode == Player.REPEAT_MODE_OFF) TextLo else accent,
                 )
@@ -336,10 +325,10 @@ fun NowPlayingScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onShuffle) {
-                Icon(Icons.Default.Shuffle, "Shuffle", tint = if (state.shuffle) accent else TextLo)
+                Icon(Ph.Shuffle, "Shuffle", tint = if (state.shuffle) accent else TextLo)
             }
             IconButton(onPrevious) {
-                Icon(Icons.Default.SkipPrevious, "Previous", Modifier.size(38.dp), tint = TextHi)
+                Icon(Ph.SkipBack, "Previous", Modifier.size(38.dp), tint = TextHi)
             }
             // Presses on the main transport button are felt, not just registered: it gives under
             // the finger and springs back. No ripple — on a solid accent disc it only muddies it.
@@ -362,11 +351,11 @@ fun NowPlayingScreen(
                 PlayGlyph(state.isPlaying, OnAccent, 34.dp)
             }
             IconButton(onNext) {
-                Icon(Icons.Default.SkipNext, "Next", Modifier.size(38.dp), tint = TextHi)
+                Icon(Ph.SkipForward, "Next", Modifier.size(38.dp), tint = TextHi)
             }
             IconButton(onFavorite) {
                 Icon(
-                    if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    if (isFavorite) Phf.Heart else Ph.Heart,
                     if (isFavorite) "Remove from favorites" else "Add to favorites",
                     tint = if (isFavorite) accent else TextLo,
                 )
@@ -386,7 +375,7 @@ fun NowPlayingScreen(
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.AutoMirrored.Filled.QueueMusic, null, Modifier.size(17.dp), tint = TextLo)
+                Icon(Ph.Playlist, null, Modifier.size(17.dp), tint = TextLo)
                 Text(
                     if (showQueue) "  Hide queue" else "  Queue · ${state.queue.size}",
                     style = MaterialTheme.typography.labelLarge,
@@ -663,13 +652,13 @@ private fun QueueList(
                 // ponytail: arrow reordering, not drag. Two taps beats pulling in a drag library
                 // for a list most people touch rarely; swap for a reorderable modifier if it grates.
                 IconButton({ onMove(i, i - 1) }, enabled = i > 0) {
-                    Icon(Icons.Default.KeyboardArrowUp, "Move up", tint = TextLo)
+                    Icon(Ph.CaretUp, "Move up", tint = TextLo)
                 }
                 IconButton({ onMove(i, i + 1) }, enabled = i < state.queue.lastIndex) {
-                    Icon(Icons.Default.KeyboardArrowDown, "Move down", tint = TextLo)
+                    Icon(Ph.CaretDown, "Move down", tint = TextLo)
                 }
                 IconButton({ onRemove(i) }) {
-                    Icon(Icons.Default.Close, "Remove from queue", tint = TextLo)
+                    Icon(Ph.X, "Remove from queue", tint = TextLo)
                 }
             }
         }

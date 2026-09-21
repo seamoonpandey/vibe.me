@@ -20,11 +20,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
 import coil3.compose.AsyncImage
 import me.vibe.Deps
 import me.vibe.data.initialsOf
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
 
 /**
  * The listener, as far as an offline app can know them: a name they typed and a picture they
@@ -53,7 +53,7 @@ fun Avatar(name: String, uri: String, size: Int, modifier: Modifier = Modifier) 
                 color = OnAccent,
             )
         } else {
-            Icon(Icons.Default.Person, "Profile", Modifier.size((size * 0.55).dp), tint = OnAccent)
+            Icon(Ph.User, "Profile", Modifier.size((size * 0.55).dp), tint = OnAccent)
         }
     }
 }

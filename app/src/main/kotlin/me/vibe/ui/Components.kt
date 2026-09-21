@@ -30,8 +30,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -55,6 +53,8 @@ import me.vibe.Deps
 import me.vibe.data.Song
 import me.vibe.data.formatDuration
 import me.vibe.data.initialsOf
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
 
 /**
  * Artwork, or a generated stand-in. Most files here have no embedded art, so the fallback is not
@@ -211,7 +211,7 @@ fun SongRow(
         // browsing; the player and the track sheet both show it when it matters.
         if (onMenu != null) {
             IconButton(onMenu, Modifier.size(40.dp)) {
-                Icon(Icons.Default.MoreVert, "More options", Modifier.size(19.dp), tint = TextLo.copy(alpha = 0.6f))
+                Icon(Ph.DotsThreeVertical, "More options", Modifier.size(19.dp), tint = TextLo.copy(alpha = 0.6f))
             }
         } else {
             Box(Modifier.width(12.dp))

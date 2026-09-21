@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +26,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import me.vibe.data.Song
 import me.vibe.data.filterSongs
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
 
 @Composable
 fun SearchScreen(
@@ -49,7 +49,7 @@ fun SearchScreen(
     Column(Modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding())) {
         androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi)
+                Icon(Ph.ArrowLeft, "Back", tint = TextHi)
             }
             OutlinedTextField(
                 value = query,

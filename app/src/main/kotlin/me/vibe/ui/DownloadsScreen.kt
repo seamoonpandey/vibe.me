@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +32,8 @@ import me.vibe.data.Song
 import me.vibe.data.formatDuration
 import me.vibe.data.remote.DownloadJob
 import me.vibe.data.remote.DownloadState
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
 
 /**
  * Everything a download can be doing, and everything it has already done.
@@ -165,11 +164,11 @@ private fun DownloadRow(
 
         when (job.state) {
             is DownloadState.Failed -> IconButton({ onRetry(song) }, Modifier.size(44.dp)) {
-                Icon(Icons.Default.Refresh, "Retry download", Modifier.size(19.dp), tint = TextLo)
+                Icon(Ph.ArrowsClockwise, "Retry download", Modifier.size(19.dp), tint = TextLo)
             }
             is DownloadState.Running, DownloadState.Queued ->
                 IconButton({ onCancel(song.streamKey.orEmpty()) }, Modifier.size(44.dp)) {
-                    Icon(Icons.Default.Close, "Cancel download", Modifier.size(19.dp), tint = TextLo)
+                    Icon(Ph.X, "Cancel download", Modifier.size(19.dp), tint = TextLo)
                 }
             else -> Box(Modifier.size(44.dp))
         }

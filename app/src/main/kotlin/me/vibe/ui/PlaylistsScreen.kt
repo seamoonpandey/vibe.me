@@ -11,14 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.NewReleases
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.vibe.data.Playlist
 import me.vibe.data.SmartList
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
+import com.adamglin.phosphoricons.FillGroup as Phf
+import com.adamglin.phosphoricons.fill.*
 
 @Composable
 fun PlaylistsScreen(
@@ -59,9 +55,9 @@ fun PlaylistsScreen(
                 name = kind.label,
                 subtitle = kind.blurb,
                 icon = when (kind) {
-                    SmartList.RECENTLY_ADDED -> Icons.Default.NewReleases
-                    SmartList.MOST_PLAYED -> Icons.Default.TrendingUp
-                    SmartList.RECENTLY_PLAYED -> Icons.Default.History
+                    SmartList.RECENTLY_ADDED -> Ph.SealCheck
+                    SmartList.MOST_PLAYED -> Ph.TrendUp
+                    SmartList.RECENTLY_PLAYED -> Ph.ClockCounterClockwise
                 },
                 onClick = { onOpenSmart(kind) },
             )
@@ -70,7 +66,7 @@ fun PlaylistsScreen(
             PlaylistRow(
                 name = "Favorites",
                 subtitle = "$favoriteCount tracks",
-                icon = Icons.Default.Favorite,
+                icon = Phf.Heart,
                 onClick = onOpenFavorites,
             )
         }
@@ -117,8 +113,8 @@ private fun PlaylistRow(
             Text(name, style = MaterialTheme.typography.titleMedium, color = TextHi, maxLines = 1)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextLo)
         }
-        onRename?.let { IconButton(it) { Icon(Icons.Default.Edit, "Rename", tint = TextLo) } }
-        onDelete?.let { IconButton(it) { Icon(Icons.Default.Delete, "Delete", tint = TextLo) } }
+        onRename?.let { IconButton(it) { Icon(Ph.PencilSimple, "Rename", tint = TextLo) } }
+        onDelete?.let { IconButton(it) { Icon(Ph.Trash, "Delete", tint = TextLo) } }
     }
 }
 

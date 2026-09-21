@@ -36,14 +36,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -124,6 +116,8 @@ import me.vibe.ui.accentFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.adamglin.phosphoricons.RegularGroup as Ph
+import com.adamglin.phosphoricons.regular.*
 
 private fun audioPermission() =
     if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO
@@ -480,17 +474,17 @@ private fun AppScaffold(
                     navigationIcon = {
                         if (!screen.isTopLevel) {
                             IconButton({ screen = backTargetFor(screen) }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi)
+                                Icon(Ph.ArrowLeft, "Back", tint = TextHi)
                             }
                         }
                     },
                     actions = {
                         when (screen) {
                             Screen.Library -> IconButton({ screen = Screen.Search }) {
-                                Icon(Icons.Default.Search, "Search", tint = TextHi)
+                                Icon(Ph.MagnifyingGlass, "Search", tint = TextHi)
                             }
                             Screen.Playlists -> IconButton({ creatingPlaylist = true }) {
-                                Icon(Icons.Default.Add, "New playlist", tint = TextHi)
+                                Icon(Ph.Plus, "New playlist", tint = TextHi)
                             }
                             else -> Unit
                         }
@@ -519,18 +513,18 @@ private fun AppScaffold(
                     )
                 }
                 NavigationBar(containerColor = Surface1, tonalElevation = 0.dp) {
-                    NavItem(screen is Screen.Library, Icons.Default.Home, "Home") {
+                    NavItem(screen is Screen.Library, Ph.House, "Home") {
                         screen = Screen.Library
                     }
-                    NavItem(screen is Screen.Explore, Icons.Default.Explore, "Explore") {
+                    NavItem(screen is Screen.Explore, Ph.Compass, "Explore") {
                         screen = Screen.Explore
                     }
                     NavItem(
                         screen is Screen.Playlists || screen is Screen.PlaylistDetail ||
                             screen is Screen.Favorites || screen is Screen.Smart,
-                        Icons.AutoMirrored.Filled.QueueMusic, "Playlists",
+                        Ph.Playlist, "Playlists",
                     ) { screen = Screen.Playlists }
-                    NavItem(screen is Screen.Downloads, Icons.Default.Download, "Downloads") {
+                    NavItem(screen is Screen.Downloads, Ph.Download, "Downloads") {
                         screen = Screen.Downloads
                     }
                     NavigationBarItem(
