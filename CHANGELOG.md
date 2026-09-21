@@ -4,6 +4,19 @@ Every release, newest first. The APK always lives at
 [releases/latest](https://github.com/seamoonpandey/vibe.me/releases/latest), so the download link
 never has to be kept up to date — only the version beside it.
 
+## 1.2.1 — 2026-09-21
+
+**The theme is right from the first frame.** Opening the app on a saved theme other than Rose showed
+Rose for a beat and then snapped to yours. The theme is read from disk asynchronously and the splash
+only waited on the library, so the first frame you ever saw still carried the placeholder. The splash
+waits on the theme now, so the app opens already wearing your colours instead of changing them in
+front of you.
+
+**New icons.** Every glyph — the tab bar, the top bar, the player controls, the track menu — moved
+from Material Symbols to Phosphor's line set, which reads as less stock. A saved track's heart fills
+in; the rest stay at line weight. Only the icons actually referenced ship, so the APK is the same
+size as it was.
+
 ## 1.2 — 2026-09-21
 
 **Search, stream and keep.** The app was a player for the files you already had. It can now go and
