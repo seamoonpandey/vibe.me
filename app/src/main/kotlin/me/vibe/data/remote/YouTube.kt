@@ -76,13 +76,26 @@ object YouTube {
      * Progressive only: a DASH or HLS stream is a manifest rather than a file, and both the
      * downloader and the plain [androidx.media3.datasource.DefaultDataSource] path want something
      * they can open and read to the end.
+     *
+     * M4A wins whenever it exists, even when an Opus stream carries more bitrate. MediaStore's
+     * audio table has no type for a WebM file and refuses the insert outright, so the better-sounding
+     * stream is the one that cannot be saved at all — it is fetched in full and then has nowhere to
+     * land. M4A is the container MediaStore, media3 and jaudiotagger all agree on end to end. Opus
+     * remains the fallback for a video that offers nothing else, and the downloader teaches
+     * MediaStore to index it (see `Downloads.publish`).
      */
-    fun pickAudio(streams: List<AudioStream>): PickedStream? = streams
-        .filter { it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP }
-        .filter { it.format in AUDIO_FORMATS }
-        .filter { it.isUrl && !it.content.isNullOrBlank() }
-        .maxByOrNull { it.averageBitrate }
-        ?.let {
+    fun pickAudio(streams: List<AudioStream>): PickedStream? {
+        val usable = streams
+            .filter { it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP }
+            .filter { it.format in AUDIO_FORMATS }
+            .filter { it.isUrl && !it.content.isNullOrBlank() }
+
+        val chosen = usable
+            .filter { it.format == MediaFormat.M4A }
+            .maxByOrNull { it.averageBitrate }
+            ?: usable.maxByOrNull { it.averageBitrate }
+
+        return chosen?.let {
             PickedStream(
                 url = it.content,
                 suffix = it.format?.suffix ?: "m4a",
@@ -90,6 +103,7 @@ object YouTube {
                 bitrate = it.averageBitrate,
             )
         }
+    }
 
     /**
      * One search result as a [Song].

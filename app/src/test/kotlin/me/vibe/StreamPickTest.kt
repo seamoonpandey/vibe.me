@@ -42,15 +42,34 @@ class StreamPickTest {
         assertEquals(160, picked?.bitrate)
     }
 
+    /**
+     * M4A is preferred on purpose, not on bitrate.
+     *
+     * MediaStore refuses to index an `audio/webm` row, so the higher-bitrate Opus stream is the one
+     * that downloads and then cannot be saved. The best-sounding stream is not the best stream if
+     * it never reaches the library.
+     */
     @Test
-    fun `opus is picked over m4a when it is the better stream`() {
+    fun `m4a beats a higher-bitrate opus stream, because it is the one that can be saved`() {
         val picked = YouTube.pickAudio(
             listOf(
                 stream("m4a", MediaFormat.M4A, 128),
                 stream("opus", MediaFormat.WEBMA_OPUS, 160),
             ),
         )
-        assertEquals("https://example.invalid/opus", picked?.url)
+        assertEquals("https://example.invalid/m4a", picked?.url)
+        assertEquals("m4a", picked?.suffix)
+    }
+
+    @Test
+    fun `opus is still used when the video offers no m4a at all`() {
+        val picked = YouTube.pickAudio(
+            listOf(
+                stream("opus-low", MediaFormat.WEBMA_OPUS, 90),
+                stream("opus-high", MediaFormat.WEBMA_OPUS, 160),
+            ),
+        )
+        assertEquals("https://example.invalid/opus-high", picked?.url)
         assertEquals("webm", picked?.suffix)
     }
 

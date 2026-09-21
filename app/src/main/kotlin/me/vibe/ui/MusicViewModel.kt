@@ -134,6 +134,9 @@ class MusicViewModel : ViewModel() {
 
     fun download(song: Song) = DownloadService.enqueue(Deps.app, song)
 
+    /** Stops a queued or in-flight transfer; the Downloads page is the only caller. */
+    fun cancelDownload(videoId: String) = DownloadService.cancel(videoId)
+
     /**
      * Every failure gets its own sentence. An empty list is not an acceptable rendering of "you are
      * offline" or "YouTube changed shape" — the user can act on one of those and not the other.

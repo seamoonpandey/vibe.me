@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import me.vibe.data.Song
+import me.vibe.data.remote.DownloadJob
 import me.vibe.data.remote.DownloadState
 
 /**
@@ -43,7 +44,7 @@ fun ExploreScreen(
     query: String,
     /** Debounced, so results only chase a query the user has stopped typing. */
     state: ExploreState,
-    downloads: Map<String, DownloadState>,
+    downloads: Map<String, DownloadJob>,
     ownedKeys: Set<String>,
     contentPadding: PaddingValues,
     currentSongId: Long?,
@@ -100,7 +101,7 @@ fun ExploreScreen(
                             onClick = { onPlay(state.results, state.results.indexOf(song)) },
                         )
                         DownloadButton(
-                            state = downloads[song.streamKey],
+                            state = downloads[song.streamKey]?.state,
                             owned = song.streamKey in ownedKeys,
                             onClick = { onDownload(song) },
                         )

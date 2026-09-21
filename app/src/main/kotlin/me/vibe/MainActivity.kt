@@ -40,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
@@ -81,6 +82,8 @@ import me.vibe.data.Album
 import me.vibe.data.Artist
 import me.vibe.data.SmartList
 import me.vibe.data.Song
+import me.vibe.data.remote.DownloadJob
+import me.vibe.data.remote.DownloadState
 import me.vibe.data.smartListSongs
 import me.vibe.data.Tags
 import me.vibe.playback.EXTRA_OPEN_PLAYER
@@ -88,6 +91,8 @@ import me.vibe.ui.AddToPlaylistDialog
 import me.vibe.ui.Avatar
 import me.vibe.ui.NameDialog
 import me.vibe.ui.DetailScreen
+import me.vibe.ui.DownloadNoticeDialog
+import me.vibe.ui.DownloadsScreen
 import me.vibe.ui.ExploreScreen
 import me.vibe.ui.Ink
 import me.vibe.ui.greetingFor
@@ -123,11 +128,15 @@ private fun audioPermission() =
     if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO
     else Manifest.permission.READ_EXTERNAL_STORAGE
 
+/** The folder Downloads writes into, and therefore the one the Downloads page reads back. */
+private const val DOWNLOAD_FOLDER = "vibe.me"
+
 /** Screen graph. Eight destinations do not need a navigation library. */
 private sealed interface Screen {
     data object Library : Screen
     data object Explore : Screen
     data object Playlists : Screen
+    data object Downloads : Screen
     data object Settings : Screen
     data object Search : Screen
     data class AlbumDetail(val album: Album) : Screen
@@ -139,7 +148,7 @@ private sealed interface Screen {
 
 private val Screen.isTopLevel: Boolean
     get() = this is Screen.Library || this is Screen.Explore ||
-        this is Screen.Playlists || this is Screen.Settings
+        this is Screen.Playlists || this is Screen.Downloads || this is Screen.Settings
 
 /** Which way a transition should travel. Search sits alongside the library rather than under it. */
 private val Screen.depth: Int
@@ -355,7 +364,31 @@ private fun AppScaffold(
 
     val explore by vm.explore.collectAsStateWithLifecycle()
     val query by vm.queryText.collectAsStateWithLifecycle()
-    val downloadStates by Deps.downloads.states.collectAsStateWithLifecycle()
+    val downloadJobs by Deps.downloads.jobs.collectAsStateWithLifecycle()
+
+    // What the downloader has already put on disk. Matched on the folder it writes to rather than
+    // on any bookkeeping of its own, so the page and the library can never disagree.
+    val downloaded = remember(library.songs) {
+        library.songs.filter { it.folder == DOWNLOAD_FOLDER }.sortedByDescending { it.dateAdded }
+    }
+
+    // Downloads report themselves wherever the user happens to be. A transfer that only speaks
+    // through a row on one screen is a transfer that seems to have done nothing when you started it
+    // from another, and a failure that stays silent is the worst of the available outcomes. Progress
+    // is not announced: the row and the notification already carry it, and interrupting for a
+    // percentage would be noise.
+    var notices by remember { mutableStateOf<List<DownloadJob>>(emptyList()) }
+    var announced by remember { mutableStateOf<Map<String, DownloadJob>>(emptyMap()) }
+    LaunchedEffect(downloadJobs) {
+        val before = announced
+        for ((id, job) in downloadJobs) {
+            if (before[id]?.state == job.state) continue
+            if (job.state is DownloadState.Done || job.state is DownloadState.Failed) {
+                notices = notices + job
+            }
+        }
+        announced = downloadJobs
+    }
 
     // Which search results the user already owns. Matched on the repaired names rather than on the
     // file, because the whole point of running YouTube titles through the same cleaner is that a
@@ -390,6 +423,7 @@ private fun AppScaffold(
         Screen.Library -> "Home"
         Screen.Explore -> "Explore"
         Screen.Playlists -> "Playlists"
+        Screen.Downloads -> "Downloads"
         Screen.Settings -> "Profile"
         Screen.Favorites -> "Favorites"
         is Screen.Smart -> s.kind.label
@@ -493,6 +527,9 @@ private fun AppScaffold(
                             screen is Screen.Favorites || screen is Screen.Smart,
                         Icons.AutoMirrored.Filled.QueueMusic, "Playlists",
                     ) { screen = Screen.Playlists }
+                    NavItem(screen is Screen.Downloads, Icons.Default.Download, "Downloads") {
+                        screen = Screen.Downloads
+                    }
                     NavigationBarItem(
                         selected = screen is Screen.Settings,
                         onClick = { screen = Screen.Settings },
@@ -568,7 +605,7 @@ private fun AppScaffold(
                 Screen.Explore -> ExploreScreen(
                     query = query,
                     state = explore,
-                    downloads = downloadStates,
+                    downloads = downloadJobs,
                     ownedKeys = ownedKeys,
                     contentPadding = padding,
                     currentSongId = playback.current?.id,
@@ -577,6 +614,18 @@ private fun AppScaffold(
                     onRetry = vm::retrySearch,
                     onPlay = ::play,
                     onDownload = vm::download,
+                )
+
+                Screen.Downloads -> DownloadsScreen(
+                    jobs = downloadJobs,
+                    downloaded = downloaded,
+                    contentPadding = padding,
+                    currentSongId = playback.current?.id,
+                    playbackActive = playback.isPlaying,
+                    onPlay = ::play,
+                    onRetry = vm::download,
+                    onCancel = vm::cancelDownload,
+                    onSongMenu = { menuFor = it },
                 )
 
                 Screen.Search -> SearchScreen(
@@ -728,6 +777,8 @@ private fun AppScaffold(
     }
 
     infoFor?.let { song -> TrackInfoDialog(song) { infoFor = null } }
+
+    DownloadNoticeDialog(notices) { notices = emptyList() }
 
     addTo?.let { ids ->
         AddToPlaylistDialog(
