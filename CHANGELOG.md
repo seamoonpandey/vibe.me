@@ -4,6 +4,15 @@ Every release, newest first. The APK always lives at
 [releases/latest](https://github.com/seamoonpandey/vibe.me/releases/latest), so the download link
 never has to be kept up to date — only the version beside it.
 
+## 1.3 — 2026-09-23
+
+**Search works on Android 7 through 12.** Everything that went through Explore crashed on any phone
+older than Android 13 with `No static method encode(...)` in `java.net.URLEncoder`. The extractor
+builds its request URLs with `URLEncoder.encode(String, Charset)`, which Android only added in 13,
+and the desugaring the app shipped with backports `java.time` but not that. It now uses the `nio`
+desugaring configuration, which does, so the call is rewritten into the APK and never reaches the
+phone's own libraries.
+
 ## 1.2.1 — 2026-09-21
 
 **The theme is right from the first frame.** Opening the app on a saved theme other than Rose showed

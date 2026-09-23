@@ -13,7 +13,7 @@ I got tired of not having a simple music app without ads. So I built one.
 
 ## Download
 
-**[Download vibe.me 1.2.1 (APK, 4 MB)](https://github.com/seamoonpandey/vibe.me/releases/latest)**
+**[Download vibe.me 1.3 (APK, 4 MB)](https://github.com/seamoonpandey/vibe.me/releases/latest)**
 
 Android 7.0 or newer. Your phone will warn you about installing outside the Play Store — that
 warning is correct and you should read it, then allow it if you trust me. Or build it yourself

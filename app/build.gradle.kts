@@ -23,8 +23,8 @@ android {
         applicationId = "me.vibe"
         minSdk = 24
         targetSdk = 37
-        versionCode = 4
-        versionName = "1.2.1"
+        versionCode = 5
+        versionName = "1.3"
     }
 
     buildFeatures {
@@ -94,7 +94,9 @@ dependencies {
     // GPL-3.0-or-later — linking it is why this app is GPLv3. See LICENSE.
     implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5")
 
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    // _nio, not the plain artifact: the extractor also calls URLEncoder.encode(String, Charset), API 33,
+    // which only the nio configuration backports. Plain desugaring crashes search on anything below 13.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
 
     testImplementation("junit:junit:4.13.2")
 }
